@@ -1551,6 +1551,20 @@ select {
 .res-msg.ok { background: color-mix(in srgb, var(--success) 13%, transparent); color: color-mix(in srgb, var(--success) 60%, var(--fg)); }
 .res-msg.bad { background: color-mix(in srgb, var(--danger) 11%, transparent); color: color-mix(in srgb, var(--danger) 65%, var(--fg)); }
 .res-msg.warn { background: color-mix(in srgb, var(--warning) 15%, transparent); color: color-mix(in srgb, var(--warning) 50%, var(--fg)); }
+.o-adv { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.o-f { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+.o-f label { font-size: 11px; font-weight: 700; color: var(--fg-muted); }
+.o-f input, .o-f select { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; }
+.o-quick { align-self: flex-end; }
+.o-note { margin-bottom: 12px; }
+.tag-late { background: color-mix(in srgb, var(--danger) 14%, transparent); color: color-mix(in srgb, var(--danger) 70%, var(--fg)); }
+.tag-today { background: color-mix(in srgb, var(--info) 14%, transparent); color: color-mix(in srgb, var(--info) 70%, var(--fg)); }
+.ocard[draggable="true"] { cursor: grab; }
+.ocard.dragging { opacity: .45; }
+body.o-dragging .col { transition: background .15s, border-color .15s; }
+body.o-dragging .col-body { min-height: 120px; }
+.col.drop-on { border-color: var(--brand); background: var(--brand-light); }
+.board-wrap:has(.col.st-cancel) { grid-template-columns: repeat(5, minmax(220px, 1fr)); }
 .cust-pick { position: relative; }
 .cp-row { display: flex; gap: 8px; }
 .cp-row input { flex: 1; min-width: 0; }
@@ -1734,7 +1748,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v22</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v24</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -1999,7 +2013,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
                 </div>
                 <div class="form-group">
                   <label for="c-date">تاريخ التسليم</label>
-                  <input type="date" id="c-date" value="2026-10-24">
+                  <input type="date" id="c-date">
                 </div>
                 <div class="form-group full">
                   <label>طريقة التسليم</label>
@@ -2108,11 +2122,8 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
                   </div>
                   <div class="form-group">
                     <label for="p-method">طريقة الدفع</label>
-                    <select id="p-method">
-                      <option>نقدي</option>
-                      <option>بطاقة</option>
-                      <option>تحويل بنكي</option>
-                    </select>
+                    <select id="p-method"></select>
+                    <div class="hint" id="p-method-hint" style="margin-top:4px"></div>
                   </div>
                   <div class="form-group">
                     <label for="p-paid">المبلغ المدفوع الآن (ج.م)</label>
@@ -2159,7 +2170,21 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
         <div class="stat-strip" id="o-stats"></div>
 
+        <div class="o-adv" id="o-adv">
+          <div class="o-f"><label for="of-from">التسليم من</label><input type="date" id="of-from" onchange="OF.from=this.value;renderOrders()"></div>
+          <div class="o-f"><label for="of-to">إلى</label><input type="date" id="of-to" onchange="OF.to=this.value;renderOrders()"></div>
+          <div class="seg o-quick" id="of-quick">
+            <button type="button" class="seg-btn" onclick="ofQuick('today')">اليوم</button>
+            <button type="button" class="seg-btn" onclick="ofQuick('tomorrow')">بكرة</button>
+            <button type="button" class="seg-btn" onclick="ofQuick('week')">7 أيام</button>
+          </div>
+          <div class="o-f"><label for="of-item">الصنف</label><select id="of-item" onchange="OF.item=this.value;renderOrders()"></select></div>
+          <div class="o-f"><label for="of-cust">العميل</label><input type="text" id="of-cust" list="of-cust-l" placeholder="الاسم أو الجوال" autocomplete="off" oninput="OF.cust=this.value;renderOrders()"><datalist id="of-cust-l"></datalist></div>
+          <button type="button" class="btn btn-secondary btn-sm" id="of-clear" onclick="ofClear()">مسح الفلاتر</button>
+        </div>
+
         <div class="filters-bar" id="o-filters" hidden></div>
+        <div class="o-note" id="o-note" hidden></div>
 
         <div class="board-wrap" id="orders-board"></div>
 
@@ -3318,6 +3343,8 @@ let orders = [
     discount: 0, fee: 0, paid: 0, method: 'نقدي', notes: 'ألغاه العميل' }
 ];
 
+// الطلبات تُقرأ من شيت المبيعات (سطر لكل صنف). البيانات التجريبية أعلاه تظهر فقط لو الموقع غير مربوط بالشيت
+const oid = o => esc(JSON.stringify(o.id));
 function totals(o) {
   const sub = o.items.reduce((s, i) => s + i.unit * i.qty, 0);
   const total = Math.max(0, sub - (o.discount || 0) + (o.fee || 0));
@@ -3351,6 +3378,12 @@ function nav(page) {
 
 /* ───────── Orders page ───────── */
 let mode = 'board', query = '', statusFilter = 'all';
+const OF = { from: '', to: '', item: '', cust: '' };
+const ST_PREV = { progress: 'new', ready: 'progress', done: 'ready', cancel: 'new' };
+const PREV_LABEL = { progress: 'رجوع إلى جديد', ready: 'رجوع إلى جاري', done: 'رجوع إلى جاهز', cancel: 'استرجاع الطلب' };
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayStr = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
 
 function setMode(m) {
   mode = m;
@@ -3360,35 +3393,87 @@ function setMode(m) {
 function setQuery(v) { query = v.trim(); renderOrders(); }
 function setFilter(f) { statusFilter = f; renderOrders(); }
 function jumpStatus(f) { mode = 'list'; statusFilter = f; document.querySelectorAll('#o-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === 'list')); renderOrders(); }
+function ofQuick(k) {
+  const t = todayStr();
+  if (k === 'today') { OF.from = t; OF.to = t; }
+  if (k === 'tomorrow') { OF.from = OF.to = addDays(t, 1); }
+  if (k === 'week') { OF.from = t; OF.to = addDays(t, 6); }
+  $('of-from').value = OF.from; $('of-to').value = OF.to;
+  renderOrders();
+}
+function ofClear() {
+  OF.from = OF.to = OF.item = OF.cust = ''; query = '';
+  ['of-from', 'of-to', 'of-cust', 'o-search'].forEach(id => $(id).value = ''); $('of-item').value = '';
+  renderOrders();
+}
 
 function matches(o) {
-  if (!query) return true;
-  return String(o.id).includes(query.replace('#', '')) || o.customer.includes(query);
+  if (query) { const q = nk(query.replace('#', '')); if (!(nk(String(o.id)).includes(q) || nk(o.customer).includes(q))) return false; }
+  if (OF.from && (!o.date || o.date < OF.from)) return false;
+  if (OF.to && (!o.date || o.date > OF.to)) return false;
+  if (OF.item && !o.items.some(i => nk(i.name) === nk(OF.item))) return false;
+  if (OF.cust) { const q = nk(normDigits(OF.cust)), qd = normDigits(OF.cust).replace(/\D/g, ''); if (!(nk(o.customer).includes(q) || (qd.length >= 3 && fixPhone(o.phone).includes(qd)))) return false; }
+  return true;
+}
+// الترتيب: الأقرب في تاريخ التسليم أولاً ثم الأحدث تسجيلاً. المسلّم والملغي: الأحدث تسليماً أولاً
+const idNum = o => Number(String(o.id).replace(/\D/g, '')) || 0;
+function orderSort(a, b, desc) {
+  const da = a.date || '9999-99-99', db = b.date || '9999-99-99';
+  if (da !== db) return desc ? (da < db ? 1 : -1) : (da < db ? -1 : 1);
+  return idNum(b) - idNum(a);
 }
 
 function payTag(o) {
   const t = totals(o);
   return t.rem <= 0 ? '<span class="tag tag-paid">مدفوع</span>' : '<span class="tag tag-due">متبقي ' + money(t.rem) + '</span>';
 }
+function dueTag(o) {
+  if (!o.date || ['done', 'cancel'].includes(o.status)) return '';
+  const t = todayStr();
+  if (o.date < t) return '<span class="tag tag-late">متأخر</span>';
+  if (o.date === t) return '<span class="tag tag-today">اليوم</span>';
+  return '';
+}
 
 function cardHTML(o) {
   const t = totals(o);
   const lines = o.items.slice(0, 2).map(i => '<li><b>' + i.qty + '×</b> ' + esc(itemTitle(i)) + '</li>').join('');
   const more = o.items.length > 2 ? '<li class="more">+ ' + (o.items.length - 2) + ' أصناف أخرى</li>' : '';
-  const act = NEXT[o.status] && can('orders', 'e') ? '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();advance(' + o.id + ')">' + NEXT_LABEL[o.status] + '</button>' : '';
-  return '<article class="ocard" tabindex="0" onclick="openOrder(' + o.id + ')" onkeydown="if(event.key===\'Enter\')openOrder(' + o.id + ')">' +
-    '<div class="oc-top"><span class="oc-id">#' + o.id + '</span><span class="oc-time">' + esc(o.time) + '</span></div>' +
+  const act = NEXT[o.status] && can('orders', 'e') ? '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();advance(' + oid(o) + ')">' + NEXT_LABEL[o.status] + '</button>' : '';
+  const drag = can('orders', 'e') && O_LIVE() ? ' draggable="true" ondragstart="oDragStart(event,' + oid(o) + ')" ondragend="oDragEnd()"' : '';
+  return '<article class="ocard" tabindex="0"' + drag + ' onclick="openOrder(' + oid(o) + ')" onkeydown="if(event.key===\'Enter\')openOrder(' + oid(o) + ')">' +
+    '<div class="oc-top"><span class="oc-id">#' + esc(o.id) + '</span><span class="oc-time">' + esc(o.time) + '</span></div>' +
     '<div class="oc-cust"><div class="oc-av">' + esc(o.customer.charAt(0)) + '</div><div class="oc-name">' + esc(o.customer) + '</div></div>' +
     '<ul class="oc-items">' + lines + more + '</ul>' +
-    '<div class="oc-meta"><span class="tag">' + (o.deliver === 'توصيل' ? '🚚 توصيل' : '🏪 استلام') + ' · ' + fmtDate(o.date) + '</span>' + payTag(o) + '</div>' +
+    '<div class="oc-meta"><span class="tag">' + (o.deliver === 'توصيل' ? '🚚 توصيل' : '🏪 استلام') + ' · ' + fmtDate(o.date) + '</span>' + dueTag(o) + payTag(o) + '</div>' +
     '<div class="oc-foot"><span class="oc-total">' + money(t.total) + '</span>' + act + '</div></article>';
 }
 
+function fillOrderFilters() {
+  const sel = $('of-item'); if (!sel) return;
+  const names = new Set();
+  (DB && catReady('items') ? DB.items : []).forEach(i => S_(i.name) && names.add(S_(i.name)));
+  orders.forEach(o => o.items.forEach(i => i.name && names.add(i.name)));
+  const list = Array.from(names).sort((a, b) => a.localeCompare(b, 'ar'));
+  sel.innerHTML = '<option value="">كل الأصناف</option>' + list.map(n => '<option value="' + esc(n) + '"' + (n === OF.item ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  const custs = new Set(orders.map(o => o.customer).filter(Boolean));
+  $('of-cust-l').innerHTML = Array.from(custs).map(c => '<option value="' + esc(c) + '">').join('');
+}
+
 function renderOrders() {
+  if (!$('orders-board')) return;
   const counts = { new: 0, progress: 0, ready: 0, done: 0, cancel: 0 };
-  orders.forEach(o => counts[o.status]++);
+  const shown = orders.filter(matches);
+  shown.forEach(o => counts[o.status]++);
   const active = counts.new + counts.progress + counts.ready;
-  $('orders-sub').textContent = active + ' طلبات نشطة من أصل ' + orders.length + ' طلب اليوم';
+  const filtered = OF.from || OF.to || OF.item || OF.cust || query;
+  $('orders-sub').textContent = active + ' طلبات نشطة · ' + shown.length + (filtered ? ' طلب مطابق للفلاتر من أصل ' + orders.length : ' طلب');
+  $('of-clear').hidden = !filtered;
+  document.querySelectorAll('#of-quick .seg-btn').forEach(b => b.classList.remove('active'));
+  fillOrderFilters();
+  const note = $('o-note');
+  note.hidden = !(CFG.scriptUrl && !O_LIVE());
+  if (!note.hidden) note.innerHTML = msg('warn', !tableOk('sales') ? 'شيت المبيعات (Sales) غير مربوط، فلا تظهر الطلبات المسجلة. اربطه من إعدادات الأدمن.' : 'جاري تحميل الطلبات من الشيت…');
 
   $('o-stats').innerHTML = ['new', 'progress', 'ready', 'done'].map(k =>
     '<button class="stat-tile st-' + k + '" onclick="jumpStatus(\'' + k + '\')"><span class="stat-dot"></span><span><div class="stat-num">' + counts[k] + '</div><div class="stat-lbl">' + STATUS[k].label + '</div></span></button>').join('');
@@ -3399,23 +3484,24 @@ function renderOrders() {
   filters.hidden = mode !== 'list';
 
   if (mode === 'board') {
-    board.innerHTML = ['new', 'progress', 'ready', 'done'].map(k => {
-      const col = orders.filter(o => o.status === k && matches(o)).sort((a, b) => b.id - a.id);
-      return '<section class="col st-' + k + '"><div class="col-head"><span class="stat-dot"></span><span class="col-name">' + STATUS[k].label + '</span><span class="col-count">' + col.length + '</span></div>' +
-        '<div class="col-body">' + (col.length ? col.map(cardHTML).join('') : '<div class="col-empty">لا توجد طلبات</div>') + '</div></section>';
+    const cols = ['new', 'progress', 'ready', 'done'].concat(counts.cancel ? ['cancel'] : []);
+    board.innerHTML = cols.map(k => {
+      const col = shown.filter(o => o.status === k).sort((a, b) => orderSort(a, b, k === 'done' || k === 'cancel'));
+      return '<section class="col st-' + k + '" data-st="' + k + '" ondragover="oDragOver(event,this)" ondragleave="this.classList.remove(\'drop-on\')" ondrop="oDrop(event,\'' + k + '\',this)"><div class="col-head"><span class="stat-dot"></span><span class="col-name">' + STATUS[k].label + '</span><span class="col-count">' + col.length + '</span></div>' +
+        '<div class="col-body">' + (col.length ? col.map(cardHTML).join('') : '<div class="col-empty">' + (can('orders', 'e') && O_LIVE() ? 'اسحب طلباً إلى هنا' : 'لا توجد طلبات') + '</div>') + '</div></section>';
     }).join('');
   } else {
     const keys = ['all', 'new', 'progress', 'ready', 'done', 'cancel'];
     filters.innerHTML = keys.map(k => {
-      const n = k === 'all' ? orders.length : counts[k];
+      const n = k === 'all' ? shown.length : counts[k];
       return '<div class="filter-chip' + (statusFilter === k ? ' active' : '') + '" onclick="setFilter(\'' + k + '\')">' + (k === 'all' ? 'الكل' : STATUS[k].label) + ' (' + n + ')</div>';
     }).join('');
-    const rows = orders.filter(o => (statusFilter === 'all' || o.status === statusFilter) && matches(o)).sort((a, b) => b.id - a.id);
+    const rows = shown.filter(o => statusFilter === 'all' || o.status === statusFilter).sort((a, b) => orderSort(a, b, false));
     $('orders-rows').innerHTML = rows.length ? rows.map(o => {
       const t = totals(o);
       const first = o.items[0];
       const summary = esc(itemTitle(first)) + (o.items.length > 1 ? ' <span class="cell-sub">+ ' + (o.items.length - 1) + ' أخرى</span>' : '');
-      return '<tr class="row-click" onclick="openOrder(' + o.id + ')"><td><strong>#' + o.id + '</strong><div class="cell-sub">' + esc(o.time) + '</div></td><td>' + esc(o.customer) + '</td><td>' + summary + '</td><td>' + (o.deliver === 'توصيل' ? '🚚' : '🏪') + ' ' + fmtDate(o.date) + '</td><td><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></td><td>' + money(t.total) + '</td><td>' + payTag(o) + '</td></tr>';
+      return '<tr class="row-click" onclick="openOrder(' + oid(o) + ')"><td><strong>#' + esc(o.id) + '</strong><div class="cell-sub">' + esc(o.time) + '</div></td><td>' + esc(o.customer) + '</td><td>' + summary + '</td><td>' + (o.deliver === 'توصيل' ? '🚚' : '🏪') + ' ' + fmtDate(o.date) + ' ' + dueTag(o) + '</td><td><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></td><td>' + money(t.total) + '</td><td>' + payTag(o) + '</td></tr>';
     }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:36px"><div class="es-title">لا توجد نتائج</div><div class="es-text">غيّر البحث أو الفلتر</div></div></td></tr>';
   }
   updateSummaries();
@@ -3424,30 +3510,56 @@ function renderOrders() {
 function updateSummaries() {
   const active = orders.filter(o => ['new', 'progress', 'ready'].includes(o.status)).length;
   $('nav-badge').textContent = active;
-  $('k-today').textContent = orders.length;
+  $('k-today').textContent = orders.filter(o => o.date === todayStr()).length;
   $('k-progress').textContent = orders.filter(o => o.status === 'progress').length;
   $('k-rev').textContent = Math.round(orders.filter(o => o.status !== 'cancel').reduce((s, o) => s + totals(o).total, 0)).toLocaleString('en-US');
-  $('dash-orders').innerHTML = [...orders].sort((a, b) => b.id - a.id).slice(0, 5).map(o =>
-    '<tr><td>#' + o.id + '</td><td>' + esc(o.customer) + '</td><td>' + esc(o.items[0].name) + (o.items.length > 1 ? ' +' + (o.items.length - 1) : '') + '</td><td><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></td><td>' + money(totals(o).total) + '</td></tr>').join('');
+  $('dash-orders').innerHTML = [...orders].sort((a, b) => idNum(b) - idNum(a)).slice(0, 5).map(o =>
+    '<tr><td>#' + esc(o.id) + '</td><td>' + esc(o.customer) + '</td><td>' + esc(o.items[0].name) + (o.items.length > 1 ? ' +' + (o.items.length - 1) : '') + '</td><td><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></td><td>' + money(totals(o).total) + '</td></tr>').join('');
 }
 
-function advance(id) {
-  if (!can('orders', 'e')) { toast('ليس لديك صلاحية تعديل الطلبات'); return; }
+/* تغيير الحالة: بالأزرار أو بالسحب بين الأعمدة (للأمام أو للخلف)، ويُحفظ في عمود الحالة بكل أسطر الطلب */
+async function setOrderStatus(id, st) {
+  if (!can('orders', 'e')) { toast('ليس لديك صلاحية تعديل الطلبات'); return false; }
+  const o = orders.find(x => x.id === id);
+  if (!o || o.status === st) return false;
+  const old = o.status;
+  if (O_LIVE()) {
+    if (!MAP.sales.cols.status) { toast('عمود حالة الطلب غير مربوط في شيت المبيعات. اربطه من إعدادات الأدمن.'); return false; }
+    o.status = st; renderOrders(); if (!$('modal').hidden) openOrder(id);
+    try {
+      await gsCall('update', { sheet: MAP.sales.sheet, match: matchOf('sales', { orderId: o.rawId }), values: mapVals('sales', { status: STATUS[st].label, userEdit: AUTH.user ? (AUTH.user.name || AUTH.user.username || '') : '' }) });
+      o.raw.forEach(r => { r.status = STATUS[st].label; });
+    } catch (e) {
+      o.status = old; renderOrders(); if (!$('modal').hidden) openOrder(id);
+      toast(gsError(e)); return false;
+    }
+  } else { o.status = st; renderOrders(); if (!$('modal').hidden) openOrder(id); }
+  return true;
+}
+async function advance(id) {
   const o = orders.find(x => x.id === id);
   if (!o || !NEXT[o.status]) return;
-  o.status = NEXT[o.status];
-  renderOrders();
-  if (!$('modal').hidden) openOrder(id);
-  toast('الطلب #' + id + ' أصبح: ' + STATUS[o.status].label);
+  if (await setOrderStatus(id, NEXT[o.status])) toast('الطلب #' + id + ' أصبح: ' + STATUS[o.status].label);
 }
-function cancelOrder(id) {
-  if (!can('orders', 'e')) { toast('ليس لديك صلاحية تعديل الطلبات'); return; }
+async function stepBack(id) {
   const o = orders.find(x => x.id === id);
-  if (!o) return;
-  o.status = 'cancel';
-  closeModal();
-  renderOrders();
-  toast('تم إلغاء الطلب #' + id);
+  if (!o || !ST_PREV[o.status]) return;
+  if (await setOrderStatus(id, ST_PREV[o.status])) toast('الطلب #' + id + ' رجع إلى: ' + STATUS[o.status].label);
+}
+async function cancelOrder(id) {
+  if (await setOrderStatus(id, 'cancel')) { closeModal(); toast('تم إلغاء الطلب #' + id); }
+}
+let DRAG_ID = null;
+function oDragStart(e, id) { DRAG_ID = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(id)); } catch (x) {} e.currentTarget.classList.add('dragging'); document.body.classList.add('o-dragging'); }
+function oDragEnd() { DRAG_ID = null; document.body.classList.remove('o-dragging'); document.querySelectorAll('.drop-on,.dragging').forEach(x => x.classList.remove('drop-on', 'dragging')); }
+function oDragOver(e, col) { if (DRAG_ID === null) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; col.classList.add('drop-on'); }
+async function oDrop(e, st, col) {
+  e.preventDefault(); col.classList.remove('drop-on');
+  const id = DRAG_ID; oDragEnd();
+  if (id === null) return;
+  const o = orders.find(x => x.id === id);
+  if (!o || o.status === st) return;
+  if (await setOrderStatus(id, st)) toast('الطلب #' + id + ' ← ' + STATUS[st].label);
 }
 
 /* Order detail modal */
@@ -3459,20 +3571,21 @@ function openOrder(id) {
     '<div class="m-line"><div><span class="q">' + i.qty + '×</span> ' + esc(itemTitle(i)) + (itemSub(i) ? '<small>' + esc(itemSub(i)) + '</small>' : '') + '</div><strong>' + money(i.unit * i.qty) + '</strong></div>').join('');
   const row = (l, v, b) => '<div class="summary-row' + (b ? ' total' : '') + '"><span class="summary-label">' + l + '</span><span>' + v + '</span></div>';
   $('modal-body').innerHTML =
-    '<div class="m-head"><div><h2 id="m-title">طلب #' + o.id + '</h2><p>' + esc(o.customer) + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + '</p></div><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></div>' +
+    '<div class="m-head"><div><h2 id="m-title">طلب #' + esc(o.id) + '</h2><p>' + esc(o.customer) + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + '</p></div><span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span></div>' +
     '<div class="m-body">' + lines +
     '<div style="margin-top:12px">' +
     row('المجموع', money(t.sub)) +
     (o.discount ? row('الخصم', '− ' + money(o.discount)) : '') +
-    (o.fee ? row('التوصيل', money(o.fee)) : '') +
+    (o.fee ? row(o.feeLabel || 'التوصيل', money(o.fee)) : '') +
     row('الإجمالي', money(t.total), true) +
-    row('المدفوع (' + esc(o.method) + ')', money(o.paid || 0)) +
+    row('المدفوع' + (o.method ? ' (' + esc(o.method) + ')' : ''), money(o.paid || 0)) +
     row('المتبقي', money(t.rem)) + '</div>' +
     '<div class="m-note">' + (o.deliver === 'توصيل' ? '🚚 توصيل إلى ' + esc(o.address || 'عنوان غير مسجل') : '🏪 استلام من الفرع') + ' · ' + fmtDate(o.date) + (o.notes ? '<br>📝 ' + esc(o.notes) : '') + '</div></div>' +
     '<div class="m-foot">' +
-    (NEXT[o.status] && can('orders', 'e') ? '<button class="btn btn-primary" onclick="advance(' + o.id + ')">' + NEXT_LABEL[o.status] + '</button>' : '') +
-    (['new', 'progress', 'ready'].includes(o.status) && can('orders', 'e') ? '<button class="btn btn-danger-ghost" onclick="cancelOrder(' + o.id + ')">إلغاء الطلب</button>' : '') +
-    (can('orders', 'd') ? '<button class="btn btn-danger-ghost" id="del-order" onclick="deleteOrder(' + o.id + ')">حذف الطلب</button>' : '') +
+    (NEXT[o.status] && can('orders', 'e') ? '<button class="btn btn-primary" onclick="advance(' + oid(o) + ')">' + NEXT_LABEL[o.status] + '</button>' : '') +
+    (ST_PREV[o.status] && can('orders', 'e') ? '<button class="btn btn-secondary" onclick="stepBack(' + oid(o) + ')">↩ ' + PREV_LABEL[o.status] + '</button>' : '') +
+    (['new', 'progress', 'ready'].includes(o.status) && can('orders', 'e') ? '<button class="btn btn-danger-ghost" onclick="cancelOrder(' + oid(o) + ')">إلغاء الطلب</button>' : '') +
+    (can('orders', 'd') ? '<button class="btn btn-danger-ghost" id="del-order" onclick="deleteOrder(' + oid(o) + ')">حذف الطلب</button>' : '') +
     '<button class="btn btn-secondary" onclick="closeModal()">إغلاق</button></div>';
   $('modal').hidden = false;
 }
@@ -3710,7 +3823,23 @@ function cartQty(i, d) { cart[i].qty = Math.max(1, cart[i].qty + d); renderCart(
 function cartRemove(i) { cart.splice(i, 1); renderCart(); }
 
 /* Confirm + payment */
+// طرق الدفع من شيت Data (عمود طرق الدفع)
+const PAY_DEFAULT = ['نقدي', 'بطاقة', 'تحويل بنكي'];
+function payMethods() {
+  if (!catReady('data') || !MAP.data.cols.payment) return null;
+  const seen = new Set(), out = [];
+  DB.data.forEach(r => { const p = S_(r.payment); if (p && !seen.has(nk(p))) { seen.add(nk(p)); out.push(p); } });
+  return out;
+}
+function fillPayMethods() {
+  const sel = $('p-method'); if (!sel) return;
+  const cur = sel.value, list = payMethods();
+  const items = list || (CFG.scriptUrl ? [] : PAY_DEFAULT);
+  sel.innerHTML = (items.length ? '<option value="">— اختر طريقة الدفع —</option>' : '<option value="">لا توجد طرق دفع</option>') + items.map(p => '<option' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>').join('');
+  $('p-method-hint').textContent = !list ? (CFG.scriptUrl ? 'طرق الدفع تُقرأ من عمود «Payment Method» في شيت Data. أضف العمود واربطه من إعدادات الأدمن.' : '') : !list.length ? 'أضف طرق الدفع من تاب التصنيفات والخيارات ← طرق الدفع.' : '';
+}
 function renderConfirm() {
+  fillPayMethods();
   const c = currentCustomer();
   $('confirm-meta').innerHTML =
     '<span class="meta-chip">العميل <b>' + esc(c.name) + '</b></span>' +
@@ -3739,31 +3868,80 @@ function calcPay() {
 }
 function payFull() { $('p-paid').value = payNums().total; calcPay(); }
 
-function submitOrder() {
+let SUBMITTING = false;
+async function submitOrder() {
   if (!can('add-order', 'a')) { toast('ليس لديك صلاحية تسجيل الطلبات'); return; }
   const c = currentCustomer();
   if (!c || !cart.length) return;
+  if (SUBMITTING) return;
   const n = payNums();
-  const id = Math.max(...orders.map(o => o.id)) + 1;
-  orders.push({
-    id, customer: c.name, phone: c.phone, status: 'new',
-    time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-    deliver, date: $('c-date').value, address: $('c-address').value.trim(),
-    items: cart.map(i => ({ ...i })), discount: n.disc, fee: n.fee, paid: n.paid,
-    method: $('p-method').value, notes: $('c-notes').value.trim()
+  if (!$('p-method').value) { toast('اختر طريقة الدفع'); return; }
+  const done = id => {
+    resetWizard();
+    mode = 'board'; statusFilter = 'all'; query = ''; $('o-search').value = '';
+    document.querySelectorAll('#o-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === 'board'));
+    renderOrders();
+    nav('orders');
+    toast('تم تسجيل الطلب #' + id + ' بإجمالي ' + money(n.total));
+  };
+  if (!CFG.scriptUrl) {   // وضع العرض التجريبي فقط
+    const id = Math.max(0, ...orders.map(idNum)) + 1;
+    orders.push({ id, customer: c.name, phone: c.phone, status: 'new', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), deliver, date: $('c-date').value, address: $('c-address').value.trim(), items: cart.map(i => ({ ...i })), discount: n.disc, fee: n.fee, paid: n.paid, method: $('p-method').value, notes: $('c-notes').value.trim() });
+    done(id); return;
+  }
+  if (!tableOk('sales')) { toast('شيت المبيعات (Sales) غير مربوط. اربطه من إعدادات الأدمن أولاً'); return; }
+  const sc = MAP.sales.cols;
+  const now = new Date(), p2 = x => String(x).padStart(2, '0');
+  const stamp = ymd(now) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()) + ':' + p2(now.getSeconds());
+  const userName = AUTH.user ? (AUTH.user.name || AUTH.user.username || '') : '';
+  const orderNote = $('c-notes').value.trim(), addr = deliver === 'توصيل' ? $('c-address').value.trim() : '';
+  // الخصم والتوصيل على أول سطر، والمدفوع يُوزّع على الأسطر بالترتيب، فجمع أي عمود في الشيت = قيمة الفاتورة
+  let payLeft = n.paid;
+  const rowsOut = cart.map((i, idx) => {
+    const optSum = (i.opts || []).reduce((s, o) => s + o.price, 0);
+    const optTxt = (i.opts || []).map(o => o.name + (o.price ? ' (+' + o.price + ')' : '')).join('، ');
+    const base = sc.extra ? i.unit - optSum : i.unit;
+    const total = base * i.qty;
+    const disc = idx === 0 ? n.disc : 0;
+    const extra = sc.extra ? optSum * i.qty + (idx === 0 && !sc.fee ? n.fee : 0) : 0;
+    const fee = idx === 0 ? n.fee : 0;
+    const net = total - disc + extra + (sc.extra || !sc.fee ? 0 : fee);
+    const lastLine = idx === cart.length - 1;
+    const paid = lastLine ? payLeft : Math.min(payLeft, Math.max(0, net));
+    payLeft -= paid;
+    const noteParts = [];
+    if (!sc.options && optTxt) noteParts.push(optTxt);
+    if (!sc.itemNote && i.note) noteParts.push(i.note);
+    if (idx === 0 && addr && !sc.address) noteParts.push('توصيل: ' + addr);
+    if (idx === 0 && orderNote) noteParts.push('ملاحظة الطلب: ' + orderNote);
+    const v = { date: stamp, deliveryDate: $('c-date').value, orderId: '', client: c.name, invType: 'Order', deliveryType: deliver, phone: c.phone,
+      itemCode: i.code || '', itemName: i.name, qty: i.qty, unitPrice: base, lineTotal: total, discount: disc, extra, net, paid, credit: net - paid,
+      method: $('p-method').value, notes: noteParts.join(' — '), user: userName, status: STATUS.new.label,
+      options: optTxt, itemNote: i.note, fee, address: addr };
+    const r = {}; Object.keys(v).forEach(k => { if (sc[k] && k !== 'orderId') r[sc[k]] = v[k]; });
+    return r;
   });
-  resetWizard();
-  mode = 'board'; statusFilter = 'all'; query = ''; $('o-search').value = '';
-  document.querySelectorAll('#o-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === 'board'));
-  renderOrders();
-  nav('orders');
-  toast('تم تسجيل الطلب #' + id + ' بإجمالي ' + money(n.total));
+  // رقم الطلب تلقائي: أكبر رقم موجود + 1 (بنفس البادئة لو موجودة)
+  let best = null;
+  (DB.sales || []).forEach(r => { const m = S_(r.orderId).match(/^(.*?)(\d+)$/); if (m && (!best || Number(m[2]) > Number(best[2]))) best = m; });
+  const autoId = best ? { col: sc.orderId, prefix: best[1], pad: best[1] ? best[2].length : 0, start: 1 } : { col: sc.orderId, prefix: '', pad: 0, start: 1001 };
+  const btn = document.querySelector('button[onclick="submitOrder()"]');
+  SUBMITTING = true; if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ…'; }
+  try {
+    const res = await gsCall('append', { sheet: MAP.sales.sheet, rows: rowsOut, autoId, textCols: [sc.phone].filter(Boolean) });
+    await reloadData(true);
+    done(res.id);
+  } catch (e) {
+    toast(gsError(e));
+  } finally {
+    SUBMITTING = false; if (btn) { btn.disabled = false; btn.textContent = '✓ تسجيل الطلب'; }
+  }
 }
 function resetWizard() {
   cart = []; B.code = ''; B.sel = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
   ['c-search', 'c-address', 'c-notes', 'b-note', 'b-q'].forEach(id => $(id).value = '');
   renderPick();
-  $('p-discount').value = 0; $('p-paid').value = 0;
+  $('p-discount').value = 0; $('p-paid').value = 0; $('c-date').value = todayStr();
   setDeliver(document.querySelector('#c-deliver .seg-btn'));
   buildBuilder(); renderCart();
 }
@@ -3821,30 +3999,36 @@ const TABLES = {
   ] },
   data: { label: 'المدن والمناطق', hint: 'شيت Data: كل صف مدينة ومنطقة تابعة لها، والمنطقة الفارغة تعني مدينة بلا مناطق بعد', sheetAlias: ['data', 'locations', 'cities', 'areas', 'البيانات', 'المدن'], keepAny: 1, fields: [
     { k: 'city', l: 'المدينة', req: 1, a: ['city', 'cityname', 'cities', 'town', 'المدينة', 'مدينة', 'المدن'] },
-    { k: 'area', l: 'المنطقة', req: 1, a: ['area', 'areaname', 'areas', 'district', 'zone', 'المنطقة', 'منطقة', 'المناطق'] }
+    { k: 'area', l: 'المنطقة', req: 1, a: ['area', 'areaname', 'areas', 'district', 'zone', 'المنطقة', 'منطقة', 'المناطق'] },
+    { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] }
   ] },
-  sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة، وبيانات الطلب تتكرر في كل سطر', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
-    { k: 'orderId', l: 'رقم الفاتورة / الطلب', req: 1, a: ['orderid', 'invoiceno', 'invoiceid', 'invoice', 'orderno', 'ordernumber', 'رقم الفاتورة', 'رقم الطلب'] },
-    { k: 'date', l: 'التاريخ', a: ['date', 'createdat', 'datetime', 'التاريخ'] },
+  sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة. الخصم والإضافة والمدفوع مرة واحدة فقط (موزعة على الأسطر) فيصح جمع الأعمدة', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
+    { k: 'date', l: 'تاريخ ووقت تسجيل الحركة (Action Date)', a: ['actiondate', 'createdat', 'timestamp', 'datetime', 'تاريخ الحركة'] },
+    { k: 'deliveryDate', l: 'تاريخ الفاتورة / التسليم اللي بتختاره في الطلب (INV Date)', a: ['invdate', 'invoicedate', 'deliverydate', 'duedate', 'تاريخ الفاتورة', 'تاريخ التسليم'] },
+    { k: 'orderId', l: 'رقم الفاتورة / الطلب', req: 1, a: ['num', 'invno', 'invnum', 'orderid', 'invoiceno', 'invoiceid', 'invoice', 'orderno', 'ordernumber', 'رقم الفاتورة', 'رقم الطلب'] },
     { k: 'client', l: 'العميل', a: ['client', 'customer', 'clientname', 'customername', 'العميل', 'اسم العميل'] },
+    { k: 'invType', l: 'نوع الحركة (INV Type = Order)', a: ['invtype', 'invoicetype', 'transactiontype', 'نوع الفاتورة', 'نوع الحركة'] },
+    { k: 'deliveryType', l: 'نوع الطلب: استلام / توصيل (Order Type)', a: ['ordertype', 'deliverytype', 'طريقة التسليم', 'نوع الطلب'] },
     { k: 'phone', l: 'الجوال', a: ['phone', 'mobile', 'tel', 'الجوال', 'رقم الجوال'] },
     { k: 'itemCode', l: 'كود الصنف', a: ['itemcode', 'code', 'كود الصنف'] },
     { k: 'itemName', l: 'اسم الصنف', req: 1, a: ['itemname', 'item', 'product', 'الصنف', 'اسم الصنف'] },
     { k: 'qty', l: 'الكمية', req: 1, a: ['qty', 'quantity', 'الكمية'] },
     { k: 'unitPrice', l: 'سعر الوحدة', req: 1, a: ['unitprice', 'price', 'سعر الوحدة', 'السعر'] },
-    { k: 'options', l: 'الاختيارات', a: ['options', 'extras', 'الاختيارات', 'الإضافات'] },
-    { k: 'optionsPrice', l: 'سعر الاختيارات', a: ['optionsprice', 'extrasprice', 'سعر الاختيارات'] },
-    { k: 'lineTotal', l: 'إجمالي السطر', a: ['linetotal', 'total', 'amount', 'الإجمالي', 'الاجمالي'] },
+    { k: 'lineTotal', l: 'الإجمالي (السعر × الكمية)', a: ['linetotal', 'total', 'amount', 'الإجمالي', 'الاجمالي'] },
     { k: 'discount', l: 'الخصم', a: ['discount', 'الخصم'] },
-    { k: 'fee', l: 'رسوم التوصيل', a: ['deliveryfee', 'fee', 'delivery', 'رسوم التوصيل', 'التوصيل'] },
+    { k: 'extra', l: 'الإضافة (الاختيارات + التوصيل)', a: ['extra', 'extras', 'addition', 'additions', 'الإضافة', 'الاضافة'] },
+    { k: 'net', l: 'الصافي = الإجمالي − الخصم + الإضافة (Net total)', a: ['nettotal', 'net', 'netamount', 'الصافي'] },
     { k: 'paid', l: 'المدفوع', a: ['paid', 'paidamount', 'المدفوع'] },
+    { k: 'credit', l: 'المتبقي (Credit)', a: ['credit', 'remaining', 'balance', 'due', 'المتبقي', 'الآجل'] },
     { k: 'method', l: 'طريقة الدفع', a: ['paymentmethod', 'method', 'payment', 'طريقة الدفع'] },
-    { k: 'status', l: 'حالة الطلب', a: ['status', 'state', 'الحالة', 'حالة الطلب'] },
-    { k: 'deliveryType', l: 'طريقة التسليم', a: ['deliverytype', 'طريقة التسليم'] },
-    { k: 'deliveryDate', l: 'تاريخ التسليم', a: ['deliverydate', 'duedate', 'تاريخ التسليم'] },
-    { k: 'address', l: 'عنوان التوصيل', a: ['address', 'العنوان'] },
-    { k: 'notes', l: 'ملاحظات', a: ['notes', 'note', 'ملاحظات'] },
-    { k: 'user', l: 'الموظف', a: ['createdby', 'user', 'employee', 'الموظف', 'المستخدم'] }
+    { k: 'notes', l: 'ملاحظة السطر (الاختيارات والملاحظات)', a: ['note', 'notes', 'ملاحظات', 'ملاحظة'] },
+    { k: 'user', l: 'الموظف اللي سجّل', a: ['user', 'createdby', 'employee', 'الموظف', 'المستخدم'] },
+    { k: 'userEdit', l: 'آخر موظف عدّل', a: ['useredit', 'editedby', 'modifiedby', 'lastuser', 'معدل بواسطة'] },
+    { k: 'status', l: 'حالة الطلب (جديد / جاري / جاهز / مسلّم / ملغي)', a: ['status', 'orderstatus', 'state', 'الحالة', 'حالة الطلب'] },
+    { k: 'options', l: 'الاختيارات (عمود منفصل، اختياري)', a: ['options', 'الاختيارات'] },
+    { k: 'itemNote', l: 'ملاحظة الصنف (عمود منفصل، اختياري)', a: ['itemnote', 'linenote', 'ملاحظة الصنف'] },
+    { k: 'fee', l: 'رسوم التوصيل (عمود منفصل، اختياري)', a: ['deliveryfee', 'رسوم التوصيل'] },
+    { k: 'address', l: 'عنوان التوصيل (اختياري)', a: ['address', 'العنوان'] }
   ] },
   users: { label: 'المستخدمون والصلاحيات', hint: 'صف لكل مستخدم عن كل تاب، مع أعمدة الفتح والإضافة والتعديل والحذف', sheetAlias: ['users', 'user', 'المستخدمون'], fields: [
     { k: 'username', l: 'اسم المستخدم', req: 1, a: ['username', 'user', 'login', 'اسم المستخدم'] },
@@ -4043,13 +4227,17 @@ function autoMap(t, onlyEmpty, only) {
   });
 }
 // ربط الحقول والجداول المضافة حديثاً فقط، دون المساس بما ربطه الأدمن سابقاً
-const NEW_MAP = { items: ['icon'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area'] };
+const NEW_MAP = { items: ['icon'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area', 'payment'], sales: ['date', 'deliveryDate', 'invType', 'deliveryType', 'extra', 'net', 'credit', 'userEdit', 'status', 'method', 'notes', 'user'] };
 function autoMapNew() {
   if (!META) return [];
+  const out0 = [];
+  const sc = MAP.sales && MAP.sales.cols;
+  if (sc && sc.date && /invdate|invoicedate/.test(norm(sc.date)) && !sc.deliveryDate) { sc.deliveryDate = sc.date; delete sc.date; out0.push('المبيعات ← INV Date أصبح «تاريخ الفاتورة / التسليم»'); }
+  if (sc && sc.fee && sc.fee === sc.extra) delete sc.fee;
   const before = {};
   Object.keys(NEW_MAP).forEach(t => { before[t] = Object.assign({}, MAP[t] && MAP[t].cols); });
   Object.keys(NEW_MAP).forEach(t => autoMap(t, true, NEW_MAP[t]));
-  const out = [];
+  const out = out0;
   Object.keys(NEW_MAP).forEach(t => NEW_MAP[t].forEach(k => {
     const h = MAP[t] && MAP[t].cols && MAP[t].cols[k];
     if (h && !before[t][k]) out.push(TABLES[t].label + ' ← ' + TABLES[t].fields.find(f => f.k === k).l + ' (' + h + ')');
@@ -4177,6 +4365,51 @@ async function previewMap(t, btn) {
   renderMap();
 }
 
+// تحويل أسطر شيت المبيعات إلى طلبات (تجميع برقم الطلب)
+const O_LIVE = () => !!(CFG.scriptUrl && DB && DB.sales && tableOk('sales'));
+const numv = v => { const n = Number(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; };
+function dayStr(v) {
+  const t = S_(v); if (!t) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/); if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  const d = new Date(t); return isNaN(d) ? (/^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : '') : ymd(d);
+}
+function timeStr(v) {
+  const t = S_(v); if (!t) return '';
+  const m = t.match(/(\d{1,2}):(\d{2})/);
+  const d = /T\d{2}:\d{2}/.test(t) ? new Date(t) : null;
+  if (d && !isNaN(d)) return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  return m ? m[1].padStart(2, '0') + ':' + m[2] : '';
+}
+const ST_ALIAS = { new: ['new', 'جديد', 'pending', 'received', 'open'], progress: ['progress', 'in progress', 'preparing', 'جاري', 'جاري التحضير', 'قيد التحضير', 'تحت التحضير'], ready: ['ready', 'جاهز', 'جاهز للتسليم'], done: ['done', 'delivered', 'completed', 'complete', 'مسلم', 'تم التسليم', 'تم'], cancel: ['cancel', 'cancelled', 'canceled', 'ملغي', 'ملغى', 'الغاء'] };
+function stKey(v) { const t = nk(v); if (!t) return 'new'; for (const k in ST_ALIAS) if (ST_ALIAS[k].some(a => nk(a) === t)) return k; return 'new'; }
+function salesOrders() {
+  const map = new Map(), sc = MAP.sales.cols;
+  DB.sales.forEach(r => {
+    const key = S_(r.orderId); if (!key) return;
+    if (sc.invType && S_(r.invType) && nk(r.invType) !== 'order') return;   // حركات أخرى غير الطلبات
+    let o = map.get(key);
+    if (!o) {
+      const dt = S_(r.deliveryType);
+      o = { id: /^\d+$/.test(key) ? Number(key) : key, rawId: r.orderId, raw: [], customer: S_(r.client) || '—', phone: fixPhone(r.phone), status: stKey(r.status), time: timeStr(r.date),
+        deliver: /توصيل|deliver/i.test(dt) ? 'توصيل' : 'استلام', date: dayStr(r.deliveryDate) || dayStr(r.date), address: S_(r.address),
+        items: [], discount: 0, fee: 0, paid: 0, method: S_(r.method), notes: '', feeLabel: sc.extra ? 'الإضافات' : 'التوصيل' };
+      map.set(key, o);
+    }
+    o.raw.push(r);
+    if (!o.status || o.status === 'new') o.status = stKey(r.status) || o.status;
+    if (!o.method) o.method = S_(r.method);
+    o.discount += numv(r.discount); o.fee += numv(r.extra) + (sc.extra ? 0 : numv(r.fee)); o.paid += numv(r.paid);
+    if (!o.address && S_(r.address)) o.address = S_(r.address);
+    if (!o.address) { const m = S_(r.notes).match(/توصيل: ([^—]+)/); if (m) o.address = m[1].trim(); }
+    const qty = numv(r.qty) || 1, unit = numv(r.unitPrice) || (numv(r.lineTotal) / qty);
+    const extras = S_(r.options) ? S_(r.options).split(/،\s*/) : [];
+    const note = [S_(r.itemNote), S_(r.notes)].filter(Boolean).join(' — ');
+    o.items.push({ code: S_(r.itemCode), name: S_(r.itemName), fill: 'سادة', size: '', extras, note, qty, unit });
+  });
+  return Array.from(map.values());
+}
+
 async function loadAll() {
   const r = await gsCall('init');
   if (r.mapping && Object.keys(r.mapping).length && !DIRTY) {
@@ -4196,6 +4429,10 @@ async function loadAll() {
   renderCatalog();
   renderCustomers();
   fillCustomerSelect();
+  fillPayMethods();
+  if (DB.sales && tableOk('sales')) orders = salesOrders();
+  else if (CFG.scriptUrl) orders = [];
+  renderOrders();
   return out;
 }
 
@@ -4690,7 +4927,7 @@ async function saveUserEd() {
 }
 
 let delOrderPending = null;
-function deleteOrder(id) {
+async function deleteOrder(id) {
   if (!can('orders', 'd')) { toast('ليس لديك صلاحية حذف الطلبات'); return; }
   const btn = $('del-order');
   if (delOrderPending !== id) {
@@ -4700,7 +4937,14 @@ function deleteOrder(id) {
     return;
   }
   delOrderPending = null;
-  orders = orders.filter(o => o.id !== id);
+  const o = orders.find(x => x.id === id);
+  if (o && O_LIVE()) {
+    btn.disabled = true;
+    try { await delRow('sales', { orderId: o.rawId }); }
+    catch (e) { btn.disabled = false; toast(gsError(e)); return; }
+  }
+  orders = orders.filter(x => x.id !== id);
+  if (DB && DB.sales && o && o.raw) DB.sales = DB.sales.filter(r => !o.raw.includes(r));
   closeModal(); renderOrders();
   toast('تم حذف الطلب #' + id);
 }
@@ -4882,7 +5126,7 @@ const UNIQUE = {
   options: [{ f: ['group', 'name'], l: 'اختيار بنفس الاسم في نفس المجموعة' }],
   groupOptions: [{ f: ['item', 'group'], l: 'نفس الربط' }],
   clients: [{ f: ['name'], l: 'عميل بنفس الاسم' }, { f: ['phone'], phone: 1, l: 'عميل بنفس رقم الجوال' }],
-  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }]
+  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }, { f: ['payment'], l: 'نفس طريقة الدفع' }]
 };
 function uniqFor(t) {
   const c = MAP[t] && MAP[t].cols;
@@ -4908,9 +5152,9 @@ function dupBanner(id, grid, n, what, on, toggle) {
   if (n) el.innerHTML = '<span>⚠️ يوجد ' + n + ' ' + what + ' مكرر في الشيت. عدّل أو احذف المكرر ليبقى سجل واحد فقط.</span><button type="button" class="btn btn-secondary btn-sm" onclick="' + toggle + '">' + (on ? 'عرض الكل' : 'عرض المكرر فقط') + '</button>';
 }
 const CAT = { sec: 'cats', q: '' };
-const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', cities: 'المدن', areas: 'المناطق' };
-const SEC_MIN = { cities: 8, areas: 8 };
-const SEC_TABLES = { cats: ['groupOptions'], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], cities: ['data'], areas: ['data'] };
+const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع' };
+const SEC_MIN = { cities: 8, areas: 8, payments: 8 };
+const SEC_TABLES = { cats: ['groupOptions'], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], cities: ['data'], areas: ['data'], payments: ['data'] };
 const AUTO_DEF = { items: ['ITEM', 4], groups: ['GRP', 3], options: ['OPT', 3] };
 let CG_ROWS = [], CG = null;
 
@@ -5025,7 +5269,7 @@ function renderCatalog() {
   const body = $('cg-body');
   if (!body) return;
   $('cg-tabs').innerHTML = Object.keys(SECS).map(k => '<button type="button" class="seg-btn' + (CAT.sec === k ? ' active' : '') + '" onclick="catSec(\'' + k + '\')">' + SECS[k] + '</button>').join('');
-  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة' }[CAT.sec];
+  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع' }[CAT.sec];
   $('cg-add').textContent = addLabel;
   $('cg-warn').hidden = srvOk(SEC_MIN[CAT.sec] || 6) || !CFG.scriptUrl || !DB;
   CG_ROWS = [];
@@ -5034,6 +5278,11 @@ function renderCatalog() {
     const why = !CFG.scriptUrl ? 'الموقع غير مربوط بالشيت بعد.' : (AUTH.user && AUTH.user.local && !AUTH.token) ? 'غير متصل بالشيت.' : !DB ? 'جاري التحميل…' : (missing.includes('data') ? (tableOk('data') && !srvOk(8) ? 'حدّث كود Apps Script (Code.gs) وانشر نسخة جديدة ليقرأ شيت Data، ثم أعد فتح الموقع.' : 'اربط شيت Data بعمودين: المدينة والمنطقة (كل صف مدينة ومنطقتها) من إعدادات الأدمن ثم احفظ للجميع.') : 'اربط ' + missing.map(t => TABLES[t].label).join(' و') + ' من إعدادات الأدمن ثم احفظ للجميع.');
     body.innerHTML = cgEmpty('🧩', 'القسم غير جاهز', esc(why));
     $('cg-sub').textContent = 'التصنيفات والمجموعات والاختيارات والمدن والمناطق';
+    return;
+  }
+  if (CAT.sec === 'payments' && !MAP.data.cols.payment) {
+    body.innerHTML = cgEmpty('💳', 'عمود طرق الدفع غير مربوط', esc('أضف عموداً باسم «Payment Method» في الصف الأول من شيت ' + MAP.data.sheet + '، ثم من إعدادات الأدمن اضغط «فحص الاتصال» و«حفظ للجميع».'));
+    $('cg-sub').textContent = 'طرق الدفع من شيت Data';
     return;
   }
   const q = CAT.q.trim().toLowerCase(), hit = s => !q || s.toLowerCase().includes(q);
@@ -5078,6 +5327,14 @@ function renderCatalog() {
       CG_ROWS.push(a); const i = CG_ROWS.length - 1;
       return '<tr><td><strong>' + esc(a.area) + '</strong></td><td>' + (a.city ? esc(a.city) : '<span class="cg-meta">—</span>') + '</td>' + (hasCl ? '<td>' + a.clients + '</td>' : '') + '<td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
     }).join('') + '</tbody></table></div></div>' : cgEmpty('📍', all.length ? 'لا نتائج مطابقة' : 'لا توجد مناطق', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف مدينة أولاً ثم أضف مناطقها.');
+  } else if (CAT.sec === 'payments') {
+    const all = payMethods() || [], list = all.filter(p => hit(p));
+    const used = {}; orders.forEach(o => { if (o.method) used[nk(o.method)] = (used[nk(o.method)] || 0) + 1; });
+    $('cg-sub').textContent = all.length + ' طريقة دفع';
+    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>طريقة الدفع</th><th>الطلبات</th><th>إجراء</th></tr></thead><tbody>' + list.map(p => {
+      CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
+      return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>' : cgEmpty('💳', all.length ? 'لا نتائج مطابقة' : 'لا توجد طرق دفع', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف طرق الدفع مثل نقدي، فودافون كاش، إنستاباي. تُحفظ في شيت Data وتظهر عند تسجيل الطلب.');
   } else {
     const codes = new Set((DB.items || []).map(i => S_(i.code)));
     const list = DB.groupOptions.filter(l => hit(l.item + ' ' + gName(l.group)));
@@ -5107,6 +5364,10 @@ document.addEventListener('click', e => {
   cgDelPending = null; cgDelete(CAT.sec, row);
 });
 
+// حذف مدينة/منطقة من شيت Data: لو عمود طرق الدفع في نفس الصفوف نفرّغ الخلايا بدل حذف الصف كله
+const dataDel = keys => MAP.data.cols.payment
+  ? gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', keys), values: mapVals('data', { city: '', area: '' }) })
+  : gsCall('delete', { sheet: MAP.data.sheet, match: matchOf('data', keys) });
 async function cgDelete(sec, row) {
   if (!needWrite(SEC_MIN[sec])) return;
   try {
@@ -5117,9 +5378,11 @@ async function cgDelete(sec, row) {
       if (catReady('options')) await delRow('options', { group: row.code });
       if (catReady('groupOptions')) await delRow('groupOptions', { group: row.code });
       await delRow('groups', { code: row.code });
+    } else if (sec === 'payments') {
+      for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: '' }) });
     } else if (sec === 'cities') {
       if (row.clients) { toast('لا يمكن حذف مدينة بها عملاء. انقل عملاءها لمدينة أخرى أولاً'); return; }
-      for (const v of rawVals('data', 'city', row.name)) await gsCall('delete', { sheet: MAP.data.sheet, match: matchOf('data', { city: v }) });
+      for (const v of rawVals('data', 'city', row.name)) await dataDel({ city: v });
       toast(row.areas ? 'تم حذف المدينة ومناطقها (' + row.areas + ')' : 'تم حذف المدينة');
       await reloadData(true);
       return;
@@ -5128,7 +5391,7 @@ async function cgDelete(sec, row) {
       const others = DB.data.filter(r => S_(r.city) === row.city && S_(r.area) !== row.area).length;
       for (const p of rawPairs('data', row.city, row.area)) {
         if (!others && row.city) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: p[0], area: p[1] }), values: mapVals('data', { area: '' }) });
-        else await gsCall('delete', { sheet: MAP.data.sheet, match: matchOf('data', { city: p[0], area: p[1] }) });
+        else await dataDel({ city: p[0], area: p[1] });
       }
     } else if (sec === 'options') await delRow('options', keyOf('options', row));
     else await delRow('groupOptions', keyOf('groupOptions', row));
@@ -5182,6 +5445,10 @@ function openCg(sec, row, pre) {
     f = fld('cg-acity', 'المدينة <span class="req">*</span>', '<select id="cg-acity"' + (isNew ? '' : ' disabled') + '><option value="">— اختر المدينة —</option>' + cityNames().map(c => '<option value="' + esc(c) + '"' + (c === sel ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>') +
       fld('cg-aname', 'اسم المنطقة <span class="req">*</span>', '<input type="text" id="cg-aname" autocomplete="off" value="' + esc(isNew ? '' : row.area) + '">') +
       (isNew && !cityNames().length ? '<div class="hint" style="grid-column:1/-1">أضف مدينة أولاً من قسم «المدن».</div>' : '');
+  } else if (sec === 'payments') {
+    if (!MAP.data.cols.payment) { toast('اربط عمود طرق الدفع في شيت Data أولاً'); return; }
+    title = isNew ? 'إضافة طريقة دفع' : 'تعديل طريقة الدفع';
+    f = fld('cg-pname', 'طريقة الدفع <span class="req">*</span>', '<input type="text" id="cg-pname" autocomplete="off" placeholder="مثال: فودافون كاش" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">الطلبات القديمة تظل مسجلة بالاسم القديم.</div>');
   } else {
     title = isNew ? 'إضافة ربط' : 'تعديل الربط';
     const v = row || {}, cats = catList().map(c => c.name), codes = (DB.items || []).map(i => S_(i.code));
@@ -5192,7 +5459,7 @@ function openCg(sec, row, pre) {
   $('cg-modal-body').innerHTML = '<div class="m-head"><div><h2 id="cg-title">' + title + '</h2><p>يُحفظ مباشرة في الشيت</p></div></div><div class="m-body"><div class="form-grid">' + f + '</div><div class="login-err" id="cg-err" role="alert"></div></div>' +
     '<div class="m-foot"><button class="btn btn-primary" id="cg-save" onclick="saveCg()">حفظ</button><button class="btn btn-secondary" onclick="closeCg()">إلغاء</button></div>';
   $('cg-modal').hidden = false;
-  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-item'); if (el) el.focus(); }, 50);
+  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-item'); if (el) el.focus(); }, 50);
 }
 function closeCg() { $('cg-modal').hidden = true; CG = null; }
 
@@ -5269,6 +5536,12 @@ async function saveCg() {
         for (const p of rawPairs('data', row.city, row.area)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: p[0], area: p[1] }), values: mapVals('data', { area: name }), unique: uniqFor('data') });
         if (clientAreaOk()) for (const k of clientAreaKeys(row)) await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', k), values: mapVals('clients', { area: name }) });
       }
+    } else if (sec === 'payments') {
+      const name = $('cg-pname').value.trim();
+      if (!name) return fail('أدخل طريقة الدفع');
+      if ((payMethods() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('طريقة الدفع موجودة بالفعل');
+      if (isNew) await appendRow('data', { payment: name });
+      else if (name !== row.name) for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: name }), unique: uniqFor('data') });
     } else {
       const item = $('cg-item').value.trim(), group = $('cg-group').value;
       if (!item) return fail('أدخل التصنيف أو كود الصنف');
