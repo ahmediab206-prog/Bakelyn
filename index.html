@@ -1734,7 +1734,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v21</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v22</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -3604,6 +3604,22 @@ function selOpts(groups) {
   return out;
 }
 const wzUnit = (it, groups) => (Number(it.price) || 0) + selOpts(groups).reduce((s, o) => s + o.price, 0);
+// لماذا لا تظهر اختيارات لهذا الصنف؟ رسالة تشخيص واضحة بدل «لا توجد اختيارات»
+function optsWhy(it) {
+  const tl = t => TABLES[t].label + ' (شيت ' + ((MAP[t] && MAP[t].sheet) || 'غير محدد') + ')';
+  if (!catReady('groupOptions')) return 'جدول ' + tl('groupOptions') + ' غير مربوط أو لم يُحمّل. من إعدادات الأدمن اضغط «فحص الاتصال» وراجع ربط أعمدته (الصنف أو الفئة، المجموعة).';
+  if (!catReady('groups')) return 'جدول ' + tl('groups') + ' غير مربوط أو لم يُحمّل.';
+  const keys = [nk(it.code), nk(it.category)].filter(Boolean);
+  const links = DB.groupOptions.filter(l => keys.includes(nk(l.item)));
+  if (!links.length) {
+    const sample = Array.from(new Set(DB.groupOptions.map(l => S_(l.item)).filter(Boolean))).slice(0, 5);
+    return 'لا يوجد ربط لهذا الصنف. التصنيف «' + S_(it.category) + '» والكود «' + S_(it.code) + '» غير موجودين في عمود «' + (MAP.groupOptions.cols.item || '؟') + '» بشيت ' + MAP.groupOptions.sheet + ' (' + DB.groupOptions.length + ' صف' + (sample.length ? '، أمثلة لقيمه: ' + sample.join('، ') : '') + '). اربطه من تاب التصنيفات والخيارات ← الربط.';
+  }
+  const codes = links.map(l => S_(l.group)), known = codes.filter(c => DB.groups.some(g => S_(g.code) === c));
+  if (!known.length) return 'الربط يشير لمجموعات غير موجودة في شيت ' + MAP.groups.sheet + ': ' + codes.join('، ') + '. تأكد أن عمود المجموعة في الربط يحتوي كود المجموعة (مثل ' + (S_((DB.groups[0] || {}).code) || 'GRP001') + ').';
+  if (!catReady('options')) return 'جدول ' + tl('options') + ' غير مربوط أو لم يُحمّل.';
+  return 'المجموعات المربوطة (' + known.join('، ') + ') ليس لها اختيارات في شيت ' + MAP.options.sheet + '. تأكد أن عمود المجموعة في Options يحتوي كود المجموعة.';
+}
 function groupHint(g) {
   if (!g.multi) return g.min ? 'اختيار واحد إجباري' : 'اختيار واحد، اختياري';
   if (g.max) return (g.min ? 'اختر من ' + g.min + ' إلى ' + g.max : 'حتى ' + g.max + ' اختيارات، اختياري');
@@ -3633,7 +3649,7 @@ function buildBuilder() {
     const sel = B.sel[g.code] || [];
     return '<div class="b-group"><div class="b-gname">' + esc(g.name) + (g.min ? ' <span class="req">*</span>' : '') + ' <small>' + groupHint(g) + '</small></div><div class="filling-grid">' +
       g.opts.map(o => { const k = optKey(o); return '<div class="fill-chip' + (sel.includes(k) ? ' selected' : '') + '" tabindex="0" role="button" data-g="' + esc(g.code) + '" data-k="' + esc(k) + '" onclick="bOpt(this.dataset.g,this.dataset.k)" onkeydown="if(event.key===\'Enter\')bOpt(this.dataset.g,this.dataset.k)">' + esc(o.name) + (Number(o.price) ? ' <small>+' + fmtPrice(o.price) + '</small>' : '') + '</div>'; }).join('') + '</div></div>';
-  }).join('') : '<div class="cg-meta">لا توجد اختيارات لهذا الصنف.</div>';
+  }).join('') : '<div class="res-msg warn">' + esc(optsWhy(it)) + '</div>';
   $('b-qty').value = B.qty;
   $('b-preview').textContent = money(it ? wzUnit(it, groups) * B.qty : 0);
 }
