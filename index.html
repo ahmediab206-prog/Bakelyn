@@ -1794,7 +1794,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v38</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v39</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -5342,6 +5342,7 @@ function openItemEditor(code) {
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-name">اسم الصنف <span class="req">*</span></label><input type="text" id="ie-name" autocomplete="off" value="' + esc(it ? it.name : '') + '"></div>' +
     (c.category ? (dataCats() ? '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><select id="ie-cat"><option value="">— اختر التصنيف —</option>' + (() => { const dc = dataCats(), cur = it ? S_(it.category) : ''; const extra = cur && !dc.some(x => nk(x) === nk(cur)) ? [cur] : []; return dc.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join(''); })() + '</select>' + (dataCats().length ? '' : '<div class="hint" style="margin-top:4px">لا توجد تصنيفات. أضفها من تاب التصنيفات والخيارات.</div>') + '</div>'
       : '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><input type="text" id="ie-cat" list="ie-cats" autocomplete="off" value="' + esc(it ? it.category : '') + '"><datalist id="ie-cats">' + cats.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist></div>') : '') +
+    (!c.grainType ? '<div class="form-group"><label for="ie-grain">نوع الحبة <span class="req">*</span></label><select id="ie-grain" disabled><option>العمود غير مربوط</option></select><div class="hint rp-due" style="margin-top:4px">عمود Grain Type في شيت Items مش مربوط. ' + (can('admin', 'e') ? '<a href="#" onclick="quickAutoMap();return false">اربطه تلقائياً الآن</a>' : 'اطلب من الأدمن يربطه.') + '</div></div>' : '') +
     (c.grainType ? '<div class="form-group"><label for="ie-grain">نوع الحبة <span class="req">*</span></label>' + (() => { const gl = breadTypes(), cur = it ? S_(it.grainType) : ''; if (!gl) return '<input type="text" id="ie-grain" autocomplete="off" value="' + esc(cur) + '"><div class="hint" style="margin-top:4px">اربط عمود Grain Type في شيت Data لتختار من قائمة.</div>'; const extra = cur && !gl.some(x => nk(x) === nk(cur)) ? [cur] : []; return '<select id="ie-grain"><option value="">— اختر نوع الحبة —</option>' + gl.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join('') + '</select>' + (gl.length ? '' : '<div class="hint" style="margin-top:4px">لا توجد أنواع حبة في شيت Data.</div>'); })() + '</div>' : '') +
     (c.active ? '<div class="form-group"><label>الحالة</label><label class="toggle-inline"><input type="checkbox" id="ie-active"' + (!it || isOn(it.active) ? ' checked' : '') + '> صنف مفعّل</label></div>' : '') +
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-icon">الأيقونة</label><div class="ie-icon-row"><div class="ie-icon-prev" id="ie-icon-prev">' + iconHTML(it ? it : {}) + '</div><input type="text" id="ie-icon" autocomplete="off" placeholder="إيموجي أو رابط صورة، أو اتركها فارغة للاختيار التلقائي" value="' + esc(it ? it.icon : '') + '"' + (c.icon ? '' : ' disabled') + '><button type="button" class="btn btn-secondary btn-sm" onclick="pickIcon(\'\')"' + (c.icon ? '' : ' disabled') + '>تلقائي</button></div>' +
@@ -5816,17 +5817,19 @@ function breadSelect(cur) {
 async function quickAutoMap(sec) {
   if (!can('admin', 'e')) { toast('ليس لديك صلاحية'); return; }
   const keep = CG ? { sec: CG.sec, row: CG.row, isNew: CG.isNew } : null;
+  const keepItem = IE ? { code: IE.isNew ? null : IE.code } : null;
   try {
     toast('جاري فحص الشيت…');
     const r = await gsCall('ping');
     META = { spreadsheet: r.spreadsheet, sheets: r.sheets };
     const added = autoMapNew();
-    if (!added.length) { toast('لم أجد الأعمدة في الصف الأول من الشيت. تأكد من أسمائها (مثل Bread Type و Min Qty و Max Qty) ثم حاول مرة أخرى'); return; }
+    if (!added.length) { toast('لم أجد الأعمدة في الصف الأول من الشيت. تأكد من أسمائها (مثل Grain Type و Min Qty و Max Qty) ثم حاول مرة أخرى'); return; }
     await gsCall('setConfig', { config: { mapping: cleanMap(), savedAt: new Date().toISOString() } });
     lsSet(LS_MAP, JSON.stringify(cleanMap())); setDirty(false);
     await reloadData(true);
     toast('تم الربط والحفظ للجميع: ' + added.length + ' عمود');
     if (keep) { closeCg(); openCg(keep.sec, keep.isNew ? null : keep.row); }
+    if (keepItem) { closeItemEditor(); openItemEditor(keepItem.code); }
   } catch (e) { toast(gsError(e)); }
 }
 function closeCg() { $('cg-modal').hidden = true; CG = null; }
