@@ -1794,7 +1794,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v37</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v38</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -3205,7 +3205,7 @@ function delete_(b, user, cfg) {
 
 <script>
 // ⇩ استبدل هذا السطر بالسطر الذي تنسخه من: إعدادات الأدمن ← تثبيت الإعدادات في الموقع
-const DEFAULT_CONFIG = {"scriptUrl":"https://script.google.com/macros/s/AKfycbzKBAuGgnzv0PoZ31UKE1gogdVHTomzVD1xRkuoGJ5fD0jWtWaUvbg3WZfsx01nhrgqjA/exec","key":""};
+const DEFAULT_CONFIG = { scriptUrl: "", key: "", mapping: {} };
 // أدمن محلي: يدخل الموقع مباشرة بدون أي اتصال بالشيت (لإعداد الربط). كلمة المرور ظاهرة في هذا الملف، فلا ترفعه لمكان عام.
 const LOCAL_ADMINS = [{ username: 'AA', password: '20236', name: 'المدير العام' }];
 
@@ -3549,7 +3549,7 @@ function renderReport() {
   body.innerHTML = '<div class="rp-print-h">Bakelyn — ' + RP_TABS[RP.tab].replace(/^\S+\s/, '') + ' · ' + esc(RP_QUICK[RP.tab] ? rangeTxt() : 'حتى ' + fmtDate(todayStr()) + ' ' + todayStr().slice(0, 4)) + '</div>' + fn();
 }
 
-// 1) قائمة التحضير: الأصناف والاختيارات وأنواع العيش لطلبات تسليمها في الفترة
+// 1) قائمة التحضير: الأصناف والاختيارات وأنواع الحبة لطلبات تسليمها في الفترة
 function rpPrep() {
   const os = orders.filter(o => o.status !== 'cancel' && inRange(o.date)).sort((a, b) => orderSort(a, b, false));
   const items = new Map(), opts = new Map(), bread = new Map();
@@ -3563,11 +3563,11 @@ function rpPrep() {
   const optRows = Array.from(opts.values()).sort((a, b) => a.group.localeCompare(b.group) || b.qty - a.qty);
   const breadRows = Array.from(bread.entries()).sort((a, b) => b[1].qty - a[1].qty);
   const pick = os.filter(o => o.deliver !== 'توصيل').length;
-  RP_EXPORT = [['النوع', 'المجموعة', 'الاسم', 'الكمية']].concat(itemRows.map(x => ['صنف', '', x.name, x.qty]), optRows.map(x => ['اختيار', x.group, x.name, x.qty]), breadRows.map(x => ['نوع العيش', '', x[0], x[1].qty]));
+  RP_EXPORT = [['النوع', 'المجموعة', 'الاسم', 'الكمية']].concat(itemRows.map(x => ['صنف', '', x.name, x.qty]), optRows.map(x => ['اختيار', x.group, x.name, x.qty]), breadRows.map(x => ['نوع الحبة', '', x[0], x[1].qty]));
   return rpKpis([['عدد الطلبات', os.length, pick + ' استلام · ' + (os.length - pick) + ' توصيل'], ['قطع الأصناف', fmtN(itemRows.reduce((s, x) => s + x.qty, 0))], ['قطع الاختيارات', fmtN(optRows.reduce((s, x) => s + x.qty, 0))]]) +
     '<div class="rp-grid">' +
     rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>']))) +
-    rpCard('أنواع العيش', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), 'من صفوف الأصناف والاختيارات') +
+    rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), 'من صفوف الأصناف والاختيارات') +
     '</div>' +
     rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>']))) +
     rpCard('الطلبات', rpTable(['#', 'التسليم', 'العميل', 'الأصناف', 'الحالة', 'الباقي'], os.map(o => ['<a href="#" onclick="nav(\'orders\');openOrder(' + oid(o) + ');return false">' + esc(o.id) + '</a>', fmtDate(o.date) + ' · ' + (o.deliver === 'توصيل' ? '🚚 ' + esc(o.address || '') : '🏪 استلام'), esc(o.customer), esc(o.items.map(i => i.qty + '× ' + i.name).join('، ')), '<span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span>', totals(o).rem > 0 ? '<b class="rp-due">' + money(totals(o).rem) + '</b>' : '<span class="tag tag-paid">مدفوع</span>'])));
@@ -3881,7 +3881,7 @@ function selOpts(groups) {
 const optLabel = o => o.name + (o.qty > 1 ? ' ×' + o.qty : '') + (o.price ? ' (+' + o.price * o.qty + ')' : '');
 // سعر القطعة = سعر الصنف + (إجمالي الاختيارات ÷ الكمية)
 const wzUnit = (it, groups) => (Number(it.price) || 0) + selOpts(groups).reduce((s, o) => s + o.price * o.qty, 0) / BQ();
-// نوع العيش لسطر الفاتورة: من الاختيارات المختارة (مثل «حبة كاملة» أو «حبة كاملة ×2، بني ×1» للبوكسات)
+// نوع الحبة لسطر الفاتورة: من الاختيارات المختارة (مثل «حبة كاملة» أو «حبة كاملة ×2، بني ×1» للبوكسات)
 function breadOf(opts) {
   const m = new Map(); (opts || []).forEach(o => { if (o.bread) m.set(o.bread, (m.get(o.bread) || 0) + (o.qty || 1)); });
   if (!m.size) return '';
@@ -3994,7 +3994,7 @@ function addToCart() {
     for (const k of Object.keys(B.sel[g.code] || {})) { const o = g.opts.find(x => optKey(x) === k); if (o && B.sel[g.code][k] > oMaxE(g, o)) { toast('أقصى كمية من «' + S_(o.name) + '» هي ' + oMaxE(g, o)); return; } }
   }
   const opts = selOpts(groups), note = $('b-note').value.trim();
-  const line = { code: S_(it.code), name: S_(it.name), fill: 'سادة', size: '', opts, extras: opts.map(optLabel), bread: breadOf(opts), qty: B.qty, note, unit: wzUnit(it, groups) };
+  const line = { code: S_(it.code), name: S_(it.name), fill: 'سادة', size: '', opts, extras: opts.map(optLabel), bread: breadOf(opts), grain: S_(it.grainType), qty: B.qty, note, unit: wzUnit(it, groups) };
   const same = !opts.length && cart.find(c => c.code === line.code && c.note === line.note && !(c.opts || []).length);
   if (same) same.qty += line.qty; else cart.push(line);
   B.sel = {}; B.qty = 1; $('b-note').value = '';
@@ -4130,7 +4130,7 @@ async function submitOrder() {
     if (idx === 0 && addr && !sc.address) noteParts.push('توصيل: ' + addr);
     if (idx === 0 && orderNote) noteParts.push('ملاحظة الطلب: ' + orderNote);
     const v = { date: stamp, deliveryDate: $('c-date').value, orderId: '', client: c.name, invType: 'Order', deliveryType: deliver, phone: c.phone,
-      itemCode: i.code || '', itemName: i.name, breadType: i.bread || '', qty: i.qty, unitPrice: base, lineTotal: total, discount: disc, extra, net, paid, credit: net - paid,
+      itemCode: i.code || '', itemName: i.name, breadType: [i.grain, i.bread].filter(Boolean).join('، '), qty: i.qty, unitPrice: base, lineTotal: total, discount: disc, extra, net, paid, credit: net - paid,
       method: $('p-method').value, notes: noteParts.join(' — '), user: userName, status: STATUS.new.label,
       options: optTxt, itemNote: i.note, fee, address: addr };
     const r = {}; Object.keys(v).forEach(k => { if (sc[k] && k !== 'orderId') r[sc[k]] = v[k]; });
@@ -4147,7 +4147,7 @@ async function submitOrder() {
       if (i.note) noteParts.push(i.note);
       if (idx === 0 && addr && !sc.address) noteParts.push('توصيل: ' + addr);
       if (idx === 0 && orderNote) noteParts.push('ملاحظة الطلب: ' + orderNote);
-      put(Object.assign({}, base0, { line: idx + 1, lineType: 'Item', itemCode: i.code || '', itemName: i.name, breadType: '', qty: i.qty, unitPrice: base, lineTotal: total,
+      put(Object.assign({}, base0, { line: idx + 1, lineType: 'Item', itemCode: i.code || '', itemName: i.name, breadType: i.grain || '', qty: i.qty, unitPrice: base, lineTotal: total,
         discount: disc, extra: sc.fee ? 0 : fee, fee, net: total - disc + fee, notes: noteParts.join(' — '), itemNote: i.note }));
       (i.opts || []).forEach(o => {
         const q = o.qty || 1, t = o.price * q;
@@ -4207,7 +4207,8 @@ const TABLES = {
     { k: 'price', l: 'السعر', req: 1, a: ['price', 'unitprice', 'السعر'] },
     { k: 'active', l: 'مفعّل', a: ['active', 'enabled', 'مفعل'] },
     { k: 'icon', l: 'الأيقونة (إيموجي أو رابط صورة، اختياري)', a: ['icon', 'emoji', 'image', 'imageurl', 'photo', 'picture', 'أيقونة', 'ايقونة', 'صورة'] },
-    { k: 'note', l: 'ملاحظات', a: ['note', 'notes', 'ملاحظات', 'ملاحظة'] }
+    { k: 'note', l: 'ملاحظات', a: ['note', 'notes', 'ملاحظات', 'ملاحظة'] },
+    { k: 'grainType', l: 'نوع الحبة', a: ['graintype', 'grain', 'نوع الحبة', 'breadtype'] }
   ] },
   groups: { label: 'مجموعات الاختيارات', hint: 'الأسئلة مثل «How do you like your sourdough?» مع الحد الأدنى والأقصى', sheetAlias: ['groups', 'optiongroups', 'المجموعات'], fields: [
     { k: 'code', l: 'كود المجموعة', req: 1, a: ['groupcode', 'code', 'id', 'كود المجموعة'] },
@@ -4222,7 +4223,7 @@ const TABLES = {
     { k: 'group', l: 'المجموعة التابع لها', req: 1, a: ['groupcode', 'group', 'groupname', 'المجموعة'] },
     { k: 'name', l: 'اسم الاختيار', req: 1, a: ['optionname', 'name', 'option', 'اسم الاختيار', 'الاختيار', 'الاسم'] },
     { k: 'price', l: 'سعر الإضافة', a: ['extraprice', 'price', 'additionalprice', 'سعر الإضافة', 'السعر'] },
-    { k: 'breadType', l: 'نوع العيش', a: ['breadtype', 'bread', 'نوع العيش', 'العيش'] },
+    { k: 'breadType', l: 'نوع الحبة', a: ['graintype', 'grain', 'breadtype', 'bread', 'نوع الحبة', 'نوع الحبة'] },
     { k: 'minQty', l: 'أقل كمية من الاختيار', a: ['minqty', 'minquantity', 'min', 'اقل كمية', 'الحد الأدنى'] },
     { k: 'maxQty', l: 'أقصى كمية من الاختيار', a: ['maxqty', 'maxquantity', 'max', 'اقصى كمية', 'الحد الأقصى'] }
   ] },
@@ -4244,7 +4245,7 @@ const TABLES = {
     { k: 'city', l: 'المدينة', req: 1, a: ['city', 'cityname', 'cities', 'town', 'المدينة', 'مدينة', 'المدن'] },
     { k: 'area', l: 'المنطقة', req: 1, a: ['area', 'areaname', 'areas', 'district', 'zone', 'المنطقة', 'منطقة', 'المناطق'] },
     { k: 'category', l: 'تصنيفات الأصناف (قائمة مستقلة في نفس الشيت)', a: ['itemcategory', 'itemcategories', 'category', 'categories', 'التصنيف', 'التصنيفات'] },
-    { k: 'breadType', l: 'أنواع العيش (قائمة مستقلة في نفس الشيت)', a: ['breadtype', 'breadtypes', 'bread', 'نوع العيش', 'انواع العيش'] },
+    { k: 'breadType', l: 'أنواع الحبة (قائمة مستقلة في نفس الشيت)', a: ['graintype', 'graintypes', 'grain', 'breadtype', 'breadtypes', 'نوع الحبة', 'انواع الحبة'] },
     { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] }
   ] },
   sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة. الخصم والإضافة والمدفوع مرة واحدة فقط (موزعة على الأسطر) فيصح جمع الأعمدة', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
@@ -4259,7 +4260,7 @@ const TABLES = {
     { k: 'phone', l: 'الجوال', a: ['phone', 'mobile', 'tel', 'الجوال', 'رقم الجوال'] },
     { k: 'itemCode', l: 'كود الصنف', a: ['itemcode', 'code', 'كود الصنف'] },
     { k: 'itemName', l: 'اسم الصنف', req: 1, a: ['itemname', 'item', 'product', 'الصنف', 'اسم الصنف'] },
-    { k: 'breadType', l: 'نوع العيش (من الاختيارات)', a: ['breadtype', 'bread', 'نوع العيش', 'العيش'] },
+    { k: 'breadType', l: 'نوع الحبة (Grain / Bread Type)', a: ['graintype', 'grain', 'breadtype', 'bread', 'نوع الحبة', 'نوع الحبة'] },
     { k: 'qty', l: 'الكمية', req: 1, a: ['qty', 'quantity', 'الكمية'] },
     { k: 'unitPrice', l: 'سعر الوحدة', req: 1, a: ['unitprice', 'price', 'سعر الوحدة', 'السعر'] },
     { k: 'lineTotal', l: 'الإجمالي (السعر × الكمية)', a: ['linetotal', 'total', 'amount', 'الإجمالي', 'الاجمالي'] },
@@ -4487,7 +4488,7 @@ function autoMap(t, onlyEmpty, only) {
   });
 }
 // ربط الحقول والجداول المضافة حديثاً فقط، دون المساس بما ربطه الأدمن سابقاً
-const NEW_MAP = { items: ['icon'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area', 'payment', 'breadType', 'category'], groupOptions: ['scope'], payments: ['code', 'orderId', 'amount', 'date', 'payDate', 'client', 'method', 'note', 'user', 'userEdit'], options: ['breadType', 'minQty', 'maxQty'], sales: ['line', 'lineType', 'breadType', 'date', 'deliveryDate', 'invType', 'deliveryType', 'extra', 'net', 'credit', 'userEdit', 'status', 'method', 'notes', 'user'] };
+const NEW_MAP = { items: ['icon', 'grainType'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area', 'payment', 'breadType', 'category'], groupOptions: ['scope'], payments: ['code', 'orderId', 'amount', 'date', 'payDate', 'client', 'method', 'note', 'user', 'userEdit'], options: ['breadType', 'minQty', 'maxQty'], sales: ['line', 'lineType', 'breadType', 'date', 'deliveryDate', 'invType', 'deliveryType', 'extra', 'net', 'credit', 'userEdit', 'status', 'method', 'notes', 'user'] };
 function autoMapNew() {
   if (!META) return [];
   const out0 = [];
@@ -5301,6 +5302,7 @@ function renderItems() {
     return '<div class="item-card' + (on ? '' : ' off') + '">' + (hasActive && !on ? '<span class="item-card-off">غير مفعّل</span>' : '') +
       '<div class="item-card-emoji">' + iconHTML(i) + '</div><div class="item-card-name">' + esc(i.name) + '</div>' +
       (i.category ? '<div class="item-card-cat">' + esc(i.category) + '</div>' : '') +
+      (S_(i.grainType) ? '<div class="item-card-cat">🌾 ' + esc(S_(i.grainType)) + '</div>' : '') +
       '<div class="item-card-code">' + esc(i.code) + '</div>' +
       '<div class="item-card-price">' + fmtPrice(i.price) + '</div>' +
       (i.note ? '<div class="item-card-note">' + esc(i.note) + '</div>' : '') +
@@ -5340,6 +5342,7 @@ function openItemEditor(code) {
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-name">اسم الصنف <span class="req">*</span></label><input type="text" id="ie-name" autocomplete="off" value="' + esc(it ? it.name : '') + '"></div>' +
     (c.category ? (dataCats() ? '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><select id="ie-cat"><option value="">— اختر التصنيف —</option>' + (() => { const dc = dataCats(), cur = it ? S_(it.category) : ''; const extra = cur && !dc.some(x => nk(x) === nk(cur)) ? [cur] : []; return dc.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join(''); })() + '</select>' + (dataCats().length ? '' : '<div class="hint" style="margin-top:4px">لا توجد تصنيفات. أضفها من تاب التصنيفات والخيارات.</div>') + '</div>'
       : '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><input type="text" id="ie-cat" list="ie-cats" autocomplete="off" value="' + esc(it ? it.category : '') + '"><datalist id="ie-cats">' + cats.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist></div>') : '') +
+    (c.grainType ? '<div class="form-group"><label for="ie-grain">نوع الحبة <span class="req">*</span></label>' + (() => { const gl = breadTypes(), cur = it ? S_(it.grainType) : ''; if (!gl) return '<input type="text" id="ie-grain" autocomplete="off" value="' + esc(cur) + '"><div class="hint" style="margin-top:4px">اربط عمود Grain Type في شيت Data لتختار من قائمة.</div>'; const extra = cur && !gl.some(x => nk(x) === nk(cur)) ? [cur] : []; return '<select id="ie-grain"><option value="">— اختر نوع الحبة —</option>' + gl.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join('') + '</select>' + (gl.length ? '' : '<div class="hint" style="margin-top:4px">لا توجد أنواع حبة في شيت Data.</div>'); })() + '</div>' : '') +
     (c.active ? '<div class="form-group"><label>الحالة</label><label class="toggle-inline"><input type="checkbox" id="ie-active"' + (!it || isOn(it.active) ? ' checked' : '') + '> صنف مفعّل</label></div>' : '') +
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-icon">الأيقونة</label><div class="ie-icon-row"><div class="ie-icon-prev" id="ie-icon-prev">' + iconHTML(it ? it : {}) + '</div><input type="text" id="ie-icon" autocomplete="off" placeholder="إيموجي أو رابط صورة، أو اتركها فارغة للاختيار التلقائي" value="' + esc(it ? it.icon : '') + '"' + (c.icon ? '' : ' disabled') + '><button type="button" class="btn btn-secondary btn-sm" onclick="pickIcon(\'\')"' + (c.icon ? '' : ' disabled') + '>تلقائي</button></div>' +
     (c.icon ? '<div class="ie-emojis" id="ie-emojis">' + EMOJI_PICK.map(e => '<button type="button" class="ie-emo" onclick="pickIcon(\'' + e + '\')" aria-label="' + e + '">' + e + '</button>').join('') + '</div>' : '<div class="hint" style="margin-top:6px">لحفظ الأيقونة أضف عموداً باسم Icon في شيت Items واربطه من إعدادات الأدمن. حالياً تُختار الأيقونة تلقائياً من الاسم والفئة.</div>') + '</div>' +
@@ -5368,6 +5371,7 @@ async function saveItem() {
   if (!name) { err.textContent = 'أدخل اسم الصنف'; return; }
   if (priceRaw === '' || isNaN(Number(priceRaw)) || Number(priceRaw) < 0) { err.textContent = 'أدخل سعراً صحيحاً'; return; }
   if (MAP.items.cols.category && !$('ie-cat').value.trim()) { err.textContent = 'اختر التصنيف'; return; }
+  if (MAP.items.cols.grainType && !$('ie-grain').value.trim()) { err.textContent = 'اختر نوع الحبة'; return; }
   const oldI = IE.isNew ? null : DB.items.find(i => S_(i.code) === S_(IE.code));
   const dupI = (!oldI || nk(oldI.name) !== nk(name)) && DB.items.find(i => nk(i.name) === nk(name) && i !== oldI);
   if (dupI) { err.textContent = 'يوجد صنف بنفس الاسم بالفعل (' + S_(dupI.code) + ' · ' + S_(dupI.name) + ')'; return; }
@@ -5377,9 +5381,10 @@ async function saveItem() {
   if (c.active) vals[c.active] = activeValue($('ie-active').checked);
   if (c.note) vals[c.note] = $('ie-note').value.trim();
   if (c.icon) vals[c.icon] = $('ie-icon').value.trim();
+  if (c.grainType) vals[c.grainType] = $('ie-grain').value.trim();
   $('ie-save').disabled = true;
   try {
-    if (IE.isNew) await appendRow('items', { name, price: Number(priceRaw), category: c.category ? $('ie-cat').value.trim() : undefined, active: c.active ? activeValue($('ie-active').checked) : undefined, note: c.note ? $('ie-note').value.trim() : undefined, icon: c.icon ? $('ie-icon').value.trim() : undefined });
+    if (IE.isNew) await appendRow('items', { name, price: Number(priceRaw), category: c.category ? $('ie-cat').value.trim() : undefined, active: c.active ? activeValue($('ie-active').checked) : undefined, note: c.note ? $('ie-note').value.trim() : undefined, icon: c.icon ? $('ie-icon').value.trim() : undefined, grainType: c.grainType ? $('ie-grain').value.trim() : undefined });
     else { await gsCall('update', { sheet, keyCol: c.code, keyValue: IE.code, values: vals, unique: uniqFor('items') }); }
     const wasNew = IE.isNew;
     closeItemEditor();
@@ -5763,7 +5768,7 @@ function openCg(sec, row, pre) {
       fld('cg-group', 'المجموعة <span class="req">*</span>', groupSelect('cg-group', isNew ? pre : v.group)) +
       fld('cg-oname', 'اسم الاختيار <span class="req">*</span>', '<input type="text" id="cg-oname" autocomplete="off" value="' + esc(v.name || '') + '">') +
       (c.price ? fld('cg-price', 'السعر الإضافي (ج.م)', '<input type="number" id="cg-price" min="0" step="any" value="' + esc(isNew ? 0 : v.price) + '">') : '') +
-      fld('cg-bread', 'نوع العيش (اختياري)', c.breadType ? breadSelect(S_(v.breadType)) : '<select id="cg-bread" disabled><option>العمود غير مربوط</option></select>') +
+      fld('cg-bread', 'نوع الحبة (اختياري)', c.breadType ? breadSelect(S_(v.breadType)) : '<select id="cg-bread" disabled><option>العمود غير مربوط</option></select>') +
       fld('cg-minq', 'أقل كمية لو اتختار', c.minQty ? '<input type="number" id="cg-minq" min="1" step="1" placeholder="1" value="' + esc(isNew ? '' : S_(v.minQty)) + '">' : '<input type="number" id="cg-minq" disabled placeholder="العمود غير مربوط">') +
       fld('cg-maxq', 'أقصى كمية', c.maxQty ? '<input type="number" id="cg-maxq" min="1" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : S_(v.maxQty)) + '">' : '<input type="number" id="cg-maxq" disabled placeholder="العمود غير مربوط">') +
       (!(c.breadType && c.minQty && c.maxQty) ? '<div class="res-msg warn" style="grid-column:1/-1">أعمدة غير مربوطة في شيت ' + esc(MAP.options.sheet) + ': ' + [!c.breadType && 'Bread Type', !c.minQty && 'Min Qty', !c.maxQty && 'Max Qty'].filter(Boolean).join('، ') + '. تأكد إنها مكتوبة في الصف الأول من الشيت' + (can('admin', 'e') ? '، ثم <a href="#" onclick="quickAutoMap(\'options\');return false">اربطها تلقائياً الآن</a>.' : '، واطلب من الأدمن ربطها.') + '</div>' : '') +
@@ -5793,7 +5798,7 @@ function openCg(sec, row, pre) {
   $('cg-modal').hidden = false;
   setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-item'); if (el) el.focus(); }, 50);
 }
-// أنواع العيش من شيت Data (عمود Bread Type)
+// أنواع الحبة من شيت Data (عمود Bread Type)
 function breadTypes() {
   if (!catReady('data') || !MAP.data.cols.breadType) return null;
   const seen = new Set(), out = [];
