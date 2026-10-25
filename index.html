@@ -1821,6 +1821,58 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 .cust-actions a.action-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .customer-cards .empty-state { grid-column: 1 / -1; }
 .cust-stat-val { font-variant-numeric: tabular-nums; }
+
+/* ─── Mobile app layout (opt-in per user, settings ← التفضيلات) ─── */
+.bottom-nav, .bn-more-sheet { display: none; }
+body.ui-mobile .sidebar { display: none; }
+body.ui-mobile .page-area { padding-bottom: 86px; }
+body.ui-mobile .bottom-nav {
+  display: flex; position: fixed; inset-inline: 0; bottom: 0; z-index: 60;
+  background: var(--sidebar-bg); border-top: 1px solid rgba(255,255,255,.08);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.bn-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 2px; background: none; border: 0; color: var(--sidebar-text);
+  font-family: inherit; cursor: pointer; position: relative;
+}
+.bn-item svg { width: 20px; height: 20px; opacity: .75; }
+.bn-item span { font-size: 10px; font-weight: 700; }
+.bn-item.active { color: var(--brand); }
+.bn-item.active svg { opacity: 1; }
+.bn-item .bn-badge {
+  position: absolute; top: -2px; inset-inline-end: 18px; background: var(--brand); color: #fff;
+  font-size: 9px; font-weight: 800; border-radius: 999px; min-width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px;
+}
+.bn-more-sheet { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 70; align-items: flex-end; }
+.bn-more-sheet.open { display: flex; }
+.bn-more-card { background: var(--surface); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 8px calc(14px + env(safe-area-inset-bottom, 0px)); max-height: 72vh; overflow-y: auto; }
+.bn-more-card .bn-bar { width: 36px; height: 4px; background: var(--border); border-radius: 99px; margin: 6px auto 10px; }
+.bn-more-item { display: flex; align-items: center; gap: 12px; padding: 13px 12px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--fg); cursor: pointer; }
+.bn-more-item:hover, .bn-more-item:active { background: var(--bg); }
+.bn-more-item svg { width: 19px; height: 19px; color: var(--fg-muted); flex: none; }
+.bn-more-item .bn-badge { position: static; margin-inline-start: auto; }
+
+/* data tables become stacked cards in mobile mode, app-wide (labels filled in by JS from the <th> text) */
+body.ui-mobile table.data-table thead,
+body.ui-mobile table.orders-table thead { display: none; }
+body.ui-mobile table.data-table, body.ui-mobile table.data-table tbody, body.ui-mobile table.data-table tfoot,
+body.ui-mobile table.orders-table, body.ui-mobile table.orders-table tbody { display: block; width: 100%; }
+body.ui-mobile table.data-table tr, body.ui-mobile table.orders-table tr {
+  display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-bottom: 9px;
+}
+body.ui-mobile table.data-table td, body.ui-mobile table.orders-table td {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 5px 2px; border: 0; font-size: 13px; text-align: start;
+}
+body.ui-mobile table.data-table td::before, body.ui-mobile table.orders-table td::before {
+  content: attr(data-label); font-size: 11.5px; font-weight: 700; color: var(--fg-muted); flex: none; margin-inline-end: 10px;
+}
+body.ui-mobile table.data-table td:not([data-label])::before { content: none; }
+body.ui-mobile table.data-table td[colspan] { display: block; text-align: center; }
+body.ui-mobile table.data-table td[colspan]::before { content: none; }
 </style>
 </head>
 <body>
@@ -1920,6 +1972,60 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
       <button class="logout-btn" id="btn-logout" onclick="doLogout()" hidden>تسجيل الخروج</button>
     </div>
   </aside>
+
+  <!-- Bottom nav (mobile layout only) -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bn-item" data-tab="dashboard" onclick="nav('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>الرئيسية</span>
+    </button>
+    <button class="bn-item" data-tab="orders" onclick="nav('orders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      <span>الطلبات</span>
+      <span class="bn-badge" id="bn-badge" hidden>0</span>
+    </button>
+    <button class="bn-item" data-tab="add-order" onclick="nav('add-order')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <span>طلب جديد</span>
+    </button>
+    <button class="bn-item" data-tab="collections" onclick="nav('collections')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span>التحصيلات</span>
+    </button>
+    <button class="bn-item" id="bn-more-btn" onclick="toggleBnMore()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      <span>المزيد</span>
+    </button>
+  </nav>
+  <div class="bn-more-sheet" id="bnMoreSheet" onclick="if(event.target===this)toggleBnMore(false)">
+    <div class="bn-more-card">
+      <div class="bn-bar"></div>
+      <div class="bn-more-item" data-tab="customers" onclick="nav('customers');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        العملاء
+      </div>
+      <div class="bn-more-item" data-tab="items" onclick="nav('items');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        الأصناف
+      </div>
+      <div class="bn-more-item" data-tab="catalog" onclick="nav('catalog');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+        التصنيفات والخيارات
+      </div>
+      <div class="bn-more-item" data-tab="reports" onclick="nav('reports');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        التقارير
+      </div>
+      <div class="bn-more-item" data-tab="settings" onclick="nav('settings');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        الإعدادات
+      </div>
+      <div class="bn-more-item" data-tab="admin" onclick="nav('admin');toggleBnMore(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        إعدادات الأدمن
+      </div>
+    </div>
+  </div>
 
   <!-- Main -->
   <div class="main">
@@ -2472,6 +2578,16 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
                   <button type="button" class="seg-btn" data-v="dark" onclick="setTheme('dark')">داكن</button>
                 </div>
               </div>
+              <div class="setting-section">
+                <h3>شكل الموقع</h3>
+                <p class="hint" style="margin:0 0 10px">اختر شكل عرض الموقع بتاعك. التصميم الجديد مظبوط عشان الفون: قايمة سفلية بدل القايمة الجانبية، وجداول أسهل في القراءة.</p>
+                <div class="seg" id="ui-pref-seg">
+                  <button type="button" class="seg-btn active" data-v="auto" onclick="setUIPref('auto')">تلقائي حسب الشاشة</button>
+                  <button type="button" class="seg-btn" data-v="mobile" onclick="setUIPref('mobile')">تصميم الفون دايمًا</button>
+                  <button type="button" class="seg-btn" data-v="desktop" onclick="setUIPref('desktop')">التصميم الحالي دايمًا</button>
+                </div>
+                <p class="hint" id="ui-pref-hint" style="margin-top:10px"></p>
+              </div>
             </div>
           </div>
         </div>
@@ -2616,7 +2732,7 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 11, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'status') return json_({ ok: true, v: 12, secured: secured, configured: !!um, admins: builtin_().length });
     if (action === 'login') return json_(login_(body, um, secured));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
@@ -2640,6 +2756,7 @@ function handle_(params, body) {
       case 'saveUser':     return json_(saveUser_(body, user, um));
       case 'deleteUser':   return json_(deleteUser_(body, user, um));
       case 'changePassword': return json_(changePassword_(body, user, um));
+      case 'setMobileLayout': return json_(setMobileLayout_(body, user, um));
       default:             return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {
@@ -2789,7 +2906,7 @@ function usersAll_(um) {
     var key = un.toLowerCase();
     var u = map[key];
     if (!u) {
-      u = map[key] = { username: un, name: '', password: '', active: true, perms: {}, rows: [], tabRows: {}, created: '', lastLogin: '' };
+      u = map[key] = { username: un, name: '', password: '', active: true, perms: {}, rows: [], tabRows: {}, created: '', lastLogin: '', mobileLayout: '' };
       order.push(key);
     }
     u.rows.push(i + 1);
@@ -2798,6 +2915,7 @@ function usersAll_(um) {
     if (idx.name >= 0 && r[idx.name] && !u.name) u.name = cell_(r[idx.name]);
     if (idx.active >= 0) u.active = u.active && activeVal_(r[idx.active]);
     if (idx.lastLogin >= 0 && r[idx.lastLogin]) u.lastLogin = cell_(r[idx.lastLogin]);
+    if (idx.mobileLayout >= 0 && r[idx.mobileLayout] && !u.mobileLayout) u.mobileLayout = cell_(r[idx.mobileLayout]);
     if (idx.created >= 0 && r[idx.created] && !u.created) u.created = cell_(r[idx.created]);
     var t = tabKey_(r[idx.tab]);
     if (t) {
@@ -2820,7 +2938,7 @@ function builtin_() {
   (typeof ADMINS !== 'undefined' ? ADMINS : []).forEach(function (a) {
     var un = String(a && a.username || '').trim(), pw = String(a && a.password || '');
     if (!un || !pw) return;
-    out.push({ username: un, name: String(a.name || un), active: true, password: pw, perms: fullPerms_(), rows: [], tabRows: {}, created: '', lastLogin: '', builtin: true });
+    out.push({ username: un, name: String(a.name || un), active: true, password: pw, perms: fullPerms_(), rows: [], tabRows: {}, created: '', lastLogin: '', mobileLayout: '', builtin: true });
   });
   return out;
 }
@@ -2835,7 +2953,7 @@ function hasUsers_(um) {
 }
 
 function pub_(u) {
-  return { username: u.username, name: u.name, active: u.active, perms: u.perms, created: u.created, lastLogin: u.lastLogin, builtin: !!u.builtin };
+  return { username: u.username, name: u.name, active: u.active, perms: u.perms, created: u.created, lastLogin: u.lastLogin, mobileLayout: u.mobileLayout || '', builtin: !!u.builtin };
 }
 
 function hash_(salt, pw) {
@@ -3034,6 +3152,19 @@ function changePassword_(b, user, um) {
   if (!checkPw_(user.password, String(b.oldPassword || ''))) throw new Error('wrong password');
   var sh = sheet_(um.sheet), hashed = makePw_(np);
   user.rows.forEach(function (row) { setCells_(sh, um, row, { password: hashed }); });
+  return { ok: true };
+}
+
+// تفضيل شكل الموقع الشخصي (تلقائي/موبايل/ديسكتوب) — كل مستخدم بيحفظ اختياره بنفسه بلا حاجة لصلاحية إعدادات
+function setMobileLayout_(b, user, um) {
+  if (!user) throw new Error('login required');
+  if (user.builtin) throw new Error('builtin user');
+  if (!um) throw new Error('users not mapped');
+  if (!um.cols.mobileLayout) throw new Error('column not mapped');
+  var v = String(b.value || '').trim();
+  if (['', 'auto', 'mobile', 'desktop'].indexOf(v) < 0) throw new Error('bad value');
+  var sh = sheet_(um.sheet);
+  user.rows.forEach(function (row) { setCells_(sh, um, row, { mobileLayout: v }); });
   return { ok: true };
 }
 
@@ -3418,10 +3549,12 @@ function nav(page) {
   CUR = page;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bn-item, .bn-more-item').forEach(n => n.classList.remove('active'));
   const view = $('view-' + page);
   if (view) view.classList.add('active');
   const navEl = document.querySelector('.nav-item[data-tab="' + page + '"]');
   if (navEl) navEl.classList.add('active');
+  document.querySelectorAll('.bn-item[data-tab="' + page + '"], .bn-more-item[data-tab="' + page + '"]').forEach(n => n.classList.add('active'));
   $('topbar-title').textContent = titles[page] || '';
   if (page === 'add-order') { goStep(1); if (!$('c-date').value) $('c-date').value = todayStr(); fillCustomerSelect(); buildBuilder(); }
   if (page === 'settings') onSettingsOpen();
@@ -3431,7 +3564,9 @@ function nav(page) {
   if (page === 'reports') renderReport();
   if (page === 'collections') renderCollections();
   closeModal();
+  toggleBnMore(false);
   document.querySelector('.page-area').scrollTop = 0;
+  mobileLabelTables();
 }
 
 /* ───────── Orders page ───────── */
@@ -3568,6 +3703,8 @@ function renderOrders() {
 function updateSummaries() {
   const active = orders.filter(o => ['new', 'progress', 'ready'].includes(o.status)).length;
   $('nav-badge').textContent = active;
+  const bnB = $('bn-badge'); if (bnB) { bnB.textContent = active; bnB.hidden = !active; }
+  mobileLabelTables();
   const t = todayStr(), live = orders.filter(o => o.status !== 'cancel');
   const due = live.filter(o => o.date === t), late = live.filter(o => o.date && o.date < t && !['done'].includes(o.status));
   $('k-today').textContent = due.length;
@@ -4431,8 +4568,54 @@ function toggleTheme() {
   root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
 /* ───────── Google Sheets connection ───────── */
-const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache';
+const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache', LS_UI = 'bk_ui_pref';
 const AUTH = { secured: false, token: '', user: null, diag: '' };
+
+/* ───────── شكل الموقع: تلقائي حسب حجم الشاشة، أو تفضيل شخصي محفوظ ───────── */
+const UI = { pref: 'auto' };
+function uiColMapped() { return !!(MAP.users && MAP.users.cols && MAP.users.cols.mobileLayout); }
+function initUIPref() {
+  const server = AUTH.user && AUTH.user.mobileLayout;
+  UI.pref = server || lsGet(LS_UI) || 'auto';
+}
+function computeMobileUI() {
+  if (UI.pref === 'mobile') return true;
+  if (UI.pref === 'desktop') return false;
+  return window.matchMedia('(max-width:800px)').matches;
+}
+function applyUIMode() {
+  document.body.classList.toggle('ui-mobile', computeMobileUI());
+  document.querySelectorAll('#bottomNav .bn-item[data-tab], #bnMoreSheet .bn-more-item[data-tab]').forEach(n => { n.hidden = !canOpen(n.dataset.tab); });
+  document.querySelectorAll('#ui-pref-seg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === UI.pref));
+  const hint = $('ui-pref-hint');
+  if (hint) hint.textContent = (!AUTH.user || AUTH.user.builtin || !uiColMapped())
+    ? 'الاختيار ده محفوظ على الجهاز ده بس دلوقتي. عشان يتحفظ لحسابك على كل الأجهزة، لازم يتضاف عمود «Mobile Layout» لشيت Users ويتربط من إعدادات الأدمن.'
+    : '';
+  mobileLabelTables();
+}
+function toggleBnMore(open) {
+  const el = $('bnMoreSheet'); if (!el) return;
+  el.classList.toggle('open', open === undefined ? !el.classList.contains('open') : !!open);
+}
+async function setUIPref(p) {
+  UI.pref = p; lsSet(LS_UI, p);
+  applyUIMode();
+  if (AUTH.user && !AUTH.user.builtin && uiColMapped()) {
+    try { await gsCall('setMobileLayout', { value: p }); AUTH.user.mobileLayout = p; }
+    catch (e) { toast('اتحفظ على الجهاز ده بس، مش على حسابك: ' + gsError(e)); }
+  }
+}
+function mobileLabelTables() {
+  if (!document.body.classList.contains('ui-mobile')) return;
+  document.querySelectorAll('table.data-table, table.orders-table').forEach(t => {
+    const heads = Array.from(t.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    if (!heads.length) return;
+    t.querySelectorAll('tbody tr, tfoot tr').forEach(tr => {
+      Array.from(tr.children).forEach((td, i) => { if (!td.hasAttribute('colspan') && heads[i]) td.setAttribute('data-label', heads[i]); });
+    });
+  });
+}
+window.addEventListener('resize', (() => { let t; return () => { clearTimeout(t); t = setTimeout(() => { if (UI.pref === 'auto') applyUIMode(); }, 200); }; })());
 let DIRTY = false;  // تعديلات ربط لم تُحفظ على الشيت بعد
 let DB = null;      // البيانات المحملة من الشيت بعد تطبيق الربط
 let META = null;    // الشيتات الموجودة فعلا: { spreadsheet, sheets: [{ name, rows, headers }] }
@@ -4541,7 +4724,8 @@ const TABLES = {
     { k: 'del', l: 'صلاحية الحذف', req: 1, a: ['deletepermission', 'delete', 'remove', 'الحذف'] },
     { k: 'name', l: 'الاسم الكامل (اختياري)', a: ['fullname', 'name', 'displayname', 'الاسم'] },
     { k: 'active', l: 'مفعّل (اختياري)', a: ['active', 'enabled', 'status', 'مفعل'] },
-    { k: 'lastLogin', l: 'آخر دخول (اختياري)', a: ['lastlogin', 'آخر دخول'] }
+    { k: 'lastLogin', l: 'آخر دخول (اختياري)', a: ['lastlogin', 'آخر دخول'] },
+    { k: 'mobileLayout', l: 'شكل الفون (اختياري)', a: ['mobilelayout', 'mobileview', 'mobile', 'شكل الفون', 'الفون'] }
   ] }
 };
 
@@ -5105,6 +5289,8 @@ function applyAuthUI() {
   $('setup-btn').textContent = (AUTH.user && AUTH.user.local && !AUTH.token && AUTH.diag) ? 'إعادة المحاولة' : 'فتح';
   b.hidden = !text;
   $('setup-text').textContent = text;
+  initUIPref();
+  applyUIMode();
   renderOrders();
   if (META) renderMap();
 }
