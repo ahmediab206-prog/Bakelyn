@@ -1794,7 +1794,7 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
 
 <div class="login-wrap" id="login" hidden>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v39</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v40</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
@@ -1835,6 +1835,11 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
         <span>الطلبات</span>
         <span class="nav-badge" id="nav-badge">12</span>
+      </div>
+
+      <div class="nav-item" data-tab="collections" onclick="nav('collections')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        <span>التحصيلات</span>
       </div>
 
       <div class="nav-item" data-tab="customers" onclick="nav('customers')">
@@ -2199,6 +2204,63 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
         </div>
       </div>
 
+      <!-- ── Collections (التحصيلات) ── -->
+      <div class="view" id="view-collections">
+        <div class="page-header">
+          <h1>التحصيلات</h1>
+          <p>اختر عميل وحصّل من فواتيره المفتوحة، وممكن توزّع مبلغ واحد على أكتر من فاتورة دفعة واحدة</p>
+        </div>
+
+        <div class="form-card" style="margin-bottom:16px">
+          <div class="form-section-title"><span>👤</span> العميل</div>
+          <div class="cust-pick">
+            <div class="cp-row" id="cl-search-row">
+              <input type="text" id="cl-search" autocomplete="off" placeholder="ابحث بالاسم أو رقم الجوال" oninput="clSearch()" onfocus="clSearch()" onkeydown="clKey(event)" onblur="setTimeout(clHide,150)" role="combobox" aria-expanded="false" aria-controls="cl-results">
+            </div>
+            <div class="cp-list" id="cl-results" role="listbox" hidden></div>
+            <div class="cp-card" id="cl-card" hidden></div>
+          </div>
+        </div>
+
+        <div id="cl-debtors-wrap"></div>
+
+        <div id="cl-work" hidden>
+          <div id="cl-rows-wrap"></div>
+
+          <div class="form-card" id="cl-pay-box" style="margin-top:16px" hidden>
+            <div class="form-section-title"><span>💵</span> تسجيل التحصيل</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="cl-amount">المبلغ المحصّل الآن (ج.م)</label>
+                <input type="number" id="cl-amount" step="any" min="0" placeholder="0">
+              </div>
+              <div class="form-group full" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clAutoDistribute()">⇆ وزّع على الفواتير (الأقدم أولاً)</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clPayAllRemaining()">تحصيل الكل</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clClearAmts()">تصفير</button>
+              </div>
+              <div class="form-group">
+                <label for="cl-method">طريقة الدفع <span class="req">*</span></label>
+                <select id="cl-method"><option value="">— اختر —</option></select>
+              </div>
+              <div class="form-group">
+                <label for="cl-date">تاريخ الدفع</label>
+                <input type="date" id="cl-date">
+              </div>
+              <div class="form-group full">
+                <label for="cl-note">ملاحظة</label>
+                <input type="text" id="cl-note" placeholder="مثال: تحصيل جزئي من فاتورتين">
+              </div>
+            </div>
+            <div class="hint">الموزّع على الفواتير دلوقتي: <b id="cl-alloc">0</b> ج.م — عدّل خانة أي فاتورة يدويًا لو عايز توزيع مختلف.</div>
+            <div class="login-err" id="cl-err"></div>
+            <div class="form-actions" style="justify-content:flex-start">
+              <button class="btn btn-primary" id="cl-save" onclick="clSave()">حفظ التحصيل</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Customer modal -->
       <div class="modal-backdrop" id="cu-modal" hidden onclick="if(event.target===this)closeCustomer()">
         <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="cu-title">
@@ -2482,19 +2544,19 @@ var ADMINS = [
 // مدة بقاء تسجيل الدخول بالثواني (الحد الأقصى المسموح به 21600 = 6 ساعات)
 var SESSION_SECONDS = 21600;
 
-var TABS = ['dashboard', 'add-order', 'orders', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
+var TABS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
 
 // من يقرأ أي جدول (يكفي وجود صلاحية فتح v في أحد هذه التابات)
 var READ_TABS = {
   items: ['items', 'add-order'], groups: ['catalog', 'items', 'add-order'], options: ['catalog', 'items', 'add-order'], groupOptions: ['catalog', 'items', 'add-order'],
-  clients: ['customers', 'add-order'],
+  clients: ['customers', 'add-order', 'collections'],
   data: ['catalog', 'customers', 'add-order'],
-  sales: ['orders', 'add-order', 'dashboard', 'reports', 'customers'],
-  payments: ['orders', 'add-order', 'dashboard', 'reports', 'customers']
+  sales: ['orders', 'add-order', 'dashboard', 'reports', 'customers', 'collections'],
+  payments: ['orders', 'add-order', 'dashboard', 'reports', 'customers', 'collections']
 };
 // صلاحيات الكتابة: [تاب، حرف]  (a إضافة، e تعديل، d حذف)
 var WRITE_RULES = {
-  append: { sales: [['add-order', 'a']], clients: [['customers', 'a'], ['add-order', 'a']], items: [['items', 'a']], groups: [['catalog', 'a']], options: [['catalog', 'a']], groupOptions: [['catalog', 'a']], data: [['catalog', 'a']], payments: [['add-order', 'a'], ['orders', 'e']] },
+  append: { sales: [['add-order', 'a']], clients: [['customers', 'a'], ['add-order', 'a']], items: [['items', 'a']], groups: [['catalog', 'a']], options: [['catalog', 'a']], groupOptions: [['catalog', 'a']], data: [['catalog', 'a']], payments: [['add-order', 'a'], ['orders', 'e'], ['collections', 'a']] },
   update: { sales: [['orders', 'e']], clients: [['customers', 'e']], items: [['items', 'e']], groups: [['catalog', 'e']], options: [['catalog', 'e']], groupOptions: [['catalog', 'e']], data: [['catalog', 'e']], payments: [['orders', 'e']] },
   del:    { sales: [['orders', 'd']], clients: [['customers', 'd']], items: [['items', 'd']], groups: [['catalog', 'd']], options: [['catalog', 'd']], groupOptions: [['catalog', 'd']], data: [['catalog', 'd']], payments: [['orders', 'd']] }
 };
@@ -2520,7 +2582,7 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 10, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'status') return json_({ ok: true, v: 11, secured: secured, configured: !!um, admins: builtin_().length });
     if (action === 'login') return json_(login_(body, um, secured));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
@@ -2630,11 +2692,12 @@ function anyOf_(user, rules) {
  * أعمدة اختيارية: الاسم الكامل، مفعّل، آخر دخول.
  */
 
-var TAB_NAMES = { dashboard: 'Dashboard', 'add-order': 'Add Order', orders: 'Orders', customers: 'Customers', items: 'Items', catalog: 'Catalog', reports: 'Reports', settings: 'Settings', admin: 'Admin' };
+var TAB_NAMES = { dashboard: 'Dashboard', 'add-order': 'Add Order', orders: 'Orders', collections: 'Collections', customers: 'Customers', items: 'Items', catalog: 'Catalog', reports: 'Reports', settings: 'Settings', admin: 'Admin' };
 var TAB_ALIASES = {
   dashboard: ['dashboard', 'home', 'الرئيسية'],
   'add-order': ['addorder', 'neworder', 'اضافةطلب'],
   orders: ['orders', 'الطلبات'],
+  collections: ['collections', 'collection', 'payments', 'التحصيلات', 'التحصيل'],
   customers: ['customers', 'clients', 'العملاء'],
   items: ['items', 'الاصناف'],
   catalog: ['catalog', 'options', 'choices', 'categories', 'الخيارات', 'التصنيفات', 'التصنيفاتوالخيارات'],
@@ -3313,7 +3376,7 @@ const itemTitle = i => i.name + (i.fill !== 'سادة' ? ' · ' + i.fill : '');
 const itemSub = i => [i.size, ...(i.extras || []), i.note].filter(Boolean).join('، ');
 
 /* ───────── Navigation ───────── */
-const titles = { dashboard: 'لوحة التحكم', 'add-order': 'إضافة طلب', orders: 'الطلبات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات', admin: 'إعدادات الأدمن' };
+const titles = { dashboard: 'لوحة التحكم', 'add-order': 'إضافة طلب', orders: 'الطلبات', collections: 'التحصيلات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات', admin: 'إعدادات الأدمن' };
 const navMap = { dashboard: 0, 'add-order': 1, orders: 2, customers: 3, items: 4, reports: 5, settings: 6, admin: 7 };
 
 function nav(page) {
@@ -3332,6 +3395,7 @@ function nav(page) {
   if (page === 'catalog') renderCatalog();
   if (page === 'customers') renderCustomers();
   if (page === 'reports') renderReport();
+  if (page === 'collections') renderCollections();
   closeModal();
   document.querySelector('.page-area').scrollTop = 0;
 }
@@ -3590,6 +3654,121 @@ function rpDebt() {
     rpCard('العملاء اللي عليهم فلوس', rpTable(['العميل', 'الفواتير', 'الإجمالي', 'المدفوع', 'الباقي', 'أقدم فاتورة مفتوحة', ''], list.map(x => [esc(x.name) + (x.phone ? '<div class="cg-meta" dir="ltr">' + esc(x.phone) + '</div>' : ''), x.n + (x.open ? ' <span class="cg-meta">(' + x.open + ' مفتوحة)</span>' : ''), money(x.total), money(x.paid), '<b class="rp-due">' + money(x.rem) + '</b>', x.oldest ? fmtDate(x.oldest) + (x.oldest < todayStr() ? ' <span class="tag tag-late">' + Math.round((new Date(todayStr()) - new Date(x.oldest)) / 864e5) + ' يوم</span>' : '') : '—', '<button class="btn btn-secondary btn-sm no-print" data-c="' + esc(x.name) + '" onclick="rpCustOrders(this.dataset.c)">الفواتير</button>']), ['الإجمالي', '', money(list.reduce((s, x) => s + x.total, 0)), money(list.reduce((s, x) => s + x.paid, 0)), '<b>' + money(tot) + '</b>', '', '']), 'لتسجيل دفعة افتح الفاتورة واضغط «تسجيل دفعة»');
 }
 function rpCustOrders(name) { ofClear(); OF.cust = name; $('of-cust').value = name; mode = 'list'; statusFilter = 'all'; document.querySelectorAll('#o-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === 'list')); nav('orders'); renderOrders(); }
+
+/* ───────── التحصيلات: تحصيل عميل واحد على أكتر من فاتورة دفعة واحدة ───────── */
+const CL = { pick: '' };
+let CL_LIST = [], CL_ROWS = [];
+function clDebtors() {
+  const m = new Map();
+  orders.filter(o => o.status !== 'cancel').forEach(o => {
+    const t = totals(o), x = m.get(o.customer) || { name: o.customer, phone: o.phone, n: 0, rem: 0 };
+    if (t.rem > 0.009) { x.n++; x.rem += t.rem; }
+    if (!x.phone && o.phone) x.phone = o.phone;
+    m.set(o.customer, x);
+  });
+  return Array.from(m.values()).filter(x => x.rem > 0.009).sort((a, b) => b.rem - a.rem);
+}
+function clSearch() {
+  const box = $('cl-results'), raw = normDigits($('cl-search').value).trim();
+  $('cl-search').setAttribute('aria-expanded', 'true');
+  box.hidden = false;
+  if (!clientsReady()) { CL_LIST = []; box.innerHTML = '<div class="cp-empty">' + (CFG.scriptUrl ? 'جاري تحميل العملاء من الشيت…' : 'الموقع غير مربوط بالشيت بعد.') + '</div>'; return; }
+  const q = nk(raw), qd = raw.replace(/\D/g, '');
+  CL_LIST = wzClients().filter(c => !raw || nk(c.name).includes(q) || (qd.length >= 3 && fixPhone(c.phone).includes(qd)))
+    .sort((a, b) => S_(a.name).localeCompare(S_(b.name), 'ar')).slice(0, 8);
+  box.innerHTML = CL_LIST.length ? CL_LIST.map((c, i) => '<button type="button" class="cp-item" role="option" onmousedown="event.preventDefault()" onclick="clPick(' + i + ')"><b>' + esc(S_(c.name)) + '</b><span dir="ltr">' + esc(fixPhone(c.phone)) + '</span></button>').join('')
+    : '<div class="cp-empty">لا يوجد عميل بهذا الاسم أو الرقم</div>';
+}
+function clHide() { const b = $('cl-results'); if (b) b.hidden = true; if ($('cl-search')) $('cl-search').setAttribute('aria-expanded', 'false'); }
+function clKey(e) { if (e.key === 'Enter') { e.preventDefault(); if (CL_LIST.length) clPick(0); } if (e.key === 'Escape') clHide(); }
+function clPick(i) { if (CL_LIST[i]) clSetPick(S_(CL_LIST[i].name)); }
+function clSetPick(name) {
+  CL.pick = name;
+  if ($('cl-search')) $('cl-search').value = '';
+  clHide();
+  CL_ROWS = orders.filter(o => o.status !== 'cancel' && nk(o.customer) === nk(name) && totals(o).rem > 0.009)
+    .sort((a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : 1)
+    .map(o => ({ id: o.id, rawId: o.rawId, date: o.date, total: totals(o).total, paid: o.paid || 0, rem: totals(o).rem }));
+  const list = payMethods() || (CFG.scriptUrl ? [] : PAY_DEFAULT);
+  $('cl-method').innerHTML = '<option value="">— اختر —</option>' + list.map(m => '<option>' + esc(m) + '</option>').join('');
+  $('cl-date').value = todayStr();
+  $('cl-amount').value = '';
+  $('cl-note').value = '';
+  renderCollections();
+}
+function clClear() { CL.pick = ''; CL_ROWS = []; renderCollections(); setTimeout(() => { if ($('cl-search')) $('cl-search').focus(); }, 30); }
+function clRecalc() {
+  let sum = 0; CL_ROWS.forEach((r, i) => { const el = $('cl-amt-' + i); sum += el ? (Number(el.value) || 0) : 0; });
+  $('cl-alloc').textContent = money(sum);
+}
+function clClampRow(i) {
+  const el = $('cl-amt-' + i), r = CL_ROWS[i]; if (!el || !r) return;
+  let n = Math.max(0, Number(el.value) || 0);
+  if (n > r.rem + 0.009) n = Math.round(r.rem * 100) / 100;
+  el.value = n ? n : '';
+  clRecalc();
+}
+function clAutoDistribute() {
+  let left = Math.max(0, Math.round((Number($('cl-amount').value) || 0) * 100) / 100);
+  CL_ROWS.forEach((r, i) => {
+    const take = Math.min(r.rem, left), v = Math.round(take * 100) / 100;
+    const el = $('cl-amt-' + i); if (el) el.value = v || '';
+    left = Math.round((left - take) * 100) / 100;
+  });
+  clRecalc();
+}
+function clPayAllRemaining() { $('cl-amount').value = Math.round(CL_ROWS.reduce((s, r) => s + r.rem, 0) * 100) / 100; clAutoDistribute(); }
+function clClearAmts() { CL_ROWS.forEach((r, i) => { const el = $('cl-amt-' + i); if (el) el.value = ''; }); $('cl-amount').value = ''; clRecalc(); }
+function renderCollections() {
+  const row = $('cl-search-row'), card = $('cl-card'), work = $('cl-work'), debWrap = $('cl-debtors-wrap');
+  if (!row) return; // الصفحة لسه مش مبنية
+  if (!O_LIVE()) {
+    row.hidden = false; card.hidden = true; work.hidden = true;
+    debWrap.innerHTML = cgEmpty('💵', 'لا توجد بيانات', !CFG.scriptUrl ? 'الموقع غير مربوط بالشيت بعد.' : !tableOk('sales') ? 'شيت المبيعات غير مربوط.' : 'جاري تحميل البيانات…');
+    return;
+  }
+  if (!CL.pick) {
+    row.hidden = false; card.hidden = true; work.hidden = true;
+    const list = clDebtors();
+    debWrap.innerHTML = '<div class="form-section-title" style="margin-top:4px"><span>📌</span> عملاء عليهم فلوس</div>' +
+      rpTable(['العميل', 'فواتير مفتوحة', 'الباقي', ''], list.map(x => [esc(x.name) + (x.phone ? '<div class="cell-sub" dir="ltr">' + esc(x.phone) + '</div>' : ''), x.n, '<b class="rp-due">' + money(x.rem) + '</b>', '<button class="btn btn-success btn-sm" data-c="' + esc(x.name) + '" onclick="clSetPick(this.dataset.c)">تحصيل</button>']));
+    return;
+  }
+  row.hidden = true; card.hidden = false; work.hidden = false; debWrap.innerHTML = '';
+  const totalRem = CL_ROWS.reduce((s, r) => s + r.rem, 0);
+  card.innerHTML = '<div class="cust-avatar">' + esc(CL.pick.charAt(0) || '؟') + '</div><div class="cp-info"><div class="cust-name">' + esc(CL.pick) + '</div><div class="cust-addr">إجمالي المفتوح: <b class="rp-due">' + money(totalRem) + '</b> في ' + CL_ROWS.length + ' فاتورة</div></div><button type="button" class="btn btn-secondary btn-sm" onclick="clClear()">تغيير</button>';
+  if (!CL_ROWS.length) {
+    $('cl-rows-wrap').innerHTML = cgEmpty('🎉', 'لا توجد فواتير مفتوحة', 'كل فواتير ' + esc(CL.pick) + ' متحصّلة بالكامل.');
+    $('cl-pay-box').hidden = true;
+    return;
+  }
+  $('cl-pay-box').hidden = false;
+  $('cl-rows-wrap').innerHTML = rpTable(['#', 'التاريخ', 'الإجمالي', 'المدفوع سابقاً', 'المتبقي', 'المبلغ دلوقتي'], CL_ROWS.map((r, i) => [
+    '<a href="#" onclick="nav(\'orders\');openOrder(' + oid({ id: r.id }) + ');return false">' + esc(r.id) + '</a>',
+    fmtDate(r.date), money(r.total), money(r.paid), '<b class="rp-due">' + money(r.rem) + '</b>',
+    '<input type="number" id="cl-amt-' + i + '" step="any" min="0" max="' + r.rem + '" placeholder="0" style="width:100px" oninput="clRecalc()" onchange="clClampRow(' + i + ')">'
+  ]));
+  clRecalc();
+}
+async function clSave() {
+  const err = $('cl-err'); err.textContent = '';
+  const method = $('cl-method').value;
+  const picks = CL_ROWS.map((r, i) => Object.assign({}, r, { amt: Math.max(0, Number(($('cl-amt-' + i) || {}).value) || 0) })).filter(r => r.amt > 0.009);
+  if (!picks.length) { err.textContent = 'أدخل مبلغ على فاتورة واحدة على الأقل'; return; }
+  if (!method) { err.textContent = 'اختر طريقة الدفع'; return; }
+  if (picks.some(r => r.amt > r.rem + 0.01)) { err.textContent = 'في فاتورة المبلغ المدخل فيها أكبر من المتبقي عليها'; return; }
+  if (CFG.scriptUrl && !tableOk('payments')) { err.textContent = 'شيت المدفوعات (Payments) غير مربوط. اربطه من إعدادات الأدمن ثم «حفظ للجميع».'; return; }
+  $('cl-save').disabled = true;
+  try {
+    const date = $('cl-date').value || todayStr(), note = $('cl-note').value.trim(), name = CL.pick;
+    const total = picks.reduce((s, r) => s + r.amt, 0);
+    for (const r of picks) { await addPayment({ orderId: r.rawId, client: name, amount: r.amt, method, payDate: date, note }); }
+    await reloadData(true);
+    toast('تم تحصيل ' + money(total) + ' من ' + name + ' على ' + picks.length + ' فاتورة');
+    clSetPick(name);
+  } catch (e) { err.textContent = gsError(e); }
+  finally { $('cl-save').disabled = false; }
+}
 
 // 3) التحصيل: المدفوعات حسب طريقة الدفع واليوم
 function rpPay() {
@@ -4732,6 +4911,7 @@ async function loadAll() {
   else if (CFG.scriptUrl) orders = [];
   renderOrders();
   if (CUR === 'reports') renderReport();
+  if (CUR === 'collections') renderCollections();
   return out;
 }
 
@@ -4821,14 +5001,14 @@ function initGS() {
 /* ───────── Auth + permissions ───────── */
 const LS_SESS = 'bk_sess';
 let CUR = 'dashboard';
-const TAB_KEYS = ['dashboard', 'add-order', 'orders', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
-const TAB_LABELS = { dashboard: 'الرئيسية', 'add-order': 'إضافة طلب', orders: 'الطلبات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات (إدارة المستخدمين)', admin: 'إعدادات الأدمن' };
+const TAB_KEYS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
+const TAB_LABELS = { dashboard: 'الرئيسية', 'add-order': 'إضافة طلب', orders: 'الطلبات', collections: 'التحصيلات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات (إدارة المستخدمين)', admin: 'إعدادات الأدمن' };
 /* الأحرف المنطبقة على كل تاب: v فتح، a إضافة، e تعديل، d حذف */
-const TAB_LETTERS = { dashboard: 'v', 'add-order': 'va', orders: 'ved', customers: 'vaed', items: 'vaed', catalog: 'vaed', reports: 'v', settings: 'vaed', admin: 've' };
+const TAB_LETTERS = { dashboard: 'v', 'add-order': 'va', orders: 'ved', collections: 'va', customers: 'vaed', items: 'vaed', catalog: 'vaed', reports: 'v', settings: 'vaed', admin: 've' };
 const LETTER_LABEL = { v: 'فتح', a: 'إضافة', e: 'تعديل', d: 'حذف' };
 const PRESETS = {
   manager: Object.fromEntries(TAB_KEYS.map(t => [t, TAB_LETTERS[t]])),
-  staff: { dashboard: 'v', 'add-order': 'va', orders: 've', customers: 'va' },
+  staff: { dashboard: 'v', 'add-order': 'va', orders: 've', collections: 'va', customers: 'va' },
   viewer: { dashboard: 'v', orders: 'v', customers: 'v', items: 'v', reports: 'v' }
 };
 
@@ -4991,7 +5171,7 @@ async function doLogout() {
 async function afterAuth() {
   hideLogin();
   applyAuthUI();
-  if (!canOpen(CUR)) nav(['dashboard', 'add-order', 'orders', 'customers', 'items', 'reports', 'settings'].find(canOpen));
+  if (!canOpen(CUR)) nav(['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'reports', 'settings'].find(canOpen));
   if (AUTH.secured && CFG.scriptUrl && (AUTH.token || !(AUTH.user && AUTH.user.local)) && can('admin', 'v') && !META) { try { const r = await gsCall('ping'); META = { spreadsheet: r.spreadsheet, sheets: r.sheets }; } catch (e) {} }
   if (!CFG.scriptUrl) setConn('off', 'غير متصل');
   else if (AUTH.user && AUTH.user.local && !AUTH.token && AUTH.diag) setConn('err', 'غير متصل بالشيت');
