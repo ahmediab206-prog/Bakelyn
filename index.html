@@ -7,7 +7,7 @@
 <style>[hidden]{display:none!important}</style>
 <title>Bakelyn Orders</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&family=Fredoka:wght@500;600;700&display=swap">
 
 <style>
 /* ─── Design tokens ─── */
@@ -107,10 +107,11 @@ html, body {
 }
 
 .sidebar-logo .logo-text {
-  font-size: 18px;
-  font-weight: 800;
+  font-family: 'Fredoka', 'Cairo', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
   color: #fff;
-  letter-spacing: -.3px;
+  letter-spacing: .2px;
 }
 
 .sidebar-logo .logo-sub {
@@ -142,11 +143,21 @@ html, body {
   border-radius: 8px;
   color: var(--sidebar-text);
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background .2s, color .2s;
   margin-bottom: 2px;
   font-size: 13.5px;
   font-weight: 500;
   user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-item::before {
+  content: "";
+  position: absolute; inset-inline-start: 0; top: 50%;
+  width: 3px; height: 0; border-radius: 0 3px 3px 0;
+  background: var(--brand); transform: translateY(-50%);
+  transition: height .25s cubic-bezier(.4,0,.2,1);
 }
 
 .nav-item:hover {
@@ -158,15 +169,19 @@ html, body {
   background: rgba(244,115,58,.15);
   color: var(--brand);
 }
+.nav-item.active::before { height: 60%; }
 
 .nav-item .nav-icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   opacity: .7;
+  transition: opacity .2s, transform .25s cubic-bezier(.34,1.56,.64,1);
 }
 
-.nav-item.active .nav-icon { opacity: 1; }
+.nav-item.active .nav-icon { opacity: 1; transform: scale(1.1); }
+.nav-item:active .nav-icon { transform: scale(.85); }
+@media (prefers-reduced-motion: reduce) { .nav-item::before, .nav-item .nav-icon { transition: none; } }
 
 .nav-badge {
   margin-right: auto;
@@ -249,7 +264,11 @@ html, body {
   font-size: 17px;
   font-weight: 700;
   color: var(--fg);
+  display: inline-block;
 }
+.topbar-title.tt-anim { animation: ttIn .3s ease; }
+@keyframes ttIn { from { opacity: 0; transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .topbar-title.tt-anim { animation: none; } }
 
 .topbar-actions {
   display: flex;
@@ -319,10 +338,15 @@ html, body {
 
 /* ─── Views ─── */
 .view { display: none; }
-.view.active { display: block; }
+.view.active { display: block; animation: viewIn .45s cubic-bezier(.16,1,.3,1); }
+@keyframes viewIn { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 /* ─── Dashboard ─── */
 .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -337,6 +361,35 @@ html, body {
   font-size: 13px;
   color: var(--fg-muted);
   margin-top: 3px;
+}
+
+.ph-text { min-width: 0; }
+
+.ph-refresh {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .15s;
+}
+.ph-refresh:hover { background: var(--bg); color: var(--brand); border-color: var(--brand); }
+.ph-refresh:active { transform: scale(.9); }
+.ph-refresh svg { width: 17px; height: 17px; transition: transform .5s ease; }
+.ph-refresh.spinning svg { animation: ph-spin .7s linear infinite; }
+.ph-refresh.pulse { animation: ph-pulse 1.4s ease-in-out 2; }
+@keyframes ph-spin { to { transform: rotate(360deg); } }
+@keyframes ph-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 35%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .view.active { animation: none; }
+  .ph-refresh.spinning svg { animation: none; }
+  .ph-refresh.pulse { animation: none; }
 }
 
 /* KPI row */
@@ -356,7 +409,16 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: kpiIn .4s both;
+  transition: transform .15s, box-shadow .15s;
 }
+.kpi-card:nth-child(1) { animation-delay: .02s; }
+.kpi-card:nth-child(2) { animation-delay: .07s; }
+.kpi-card:nth-child(3) { animation-delay: .12s; }
+.kpi-card:nth-child(4) { animation-delay: .17s; }
+.kpi-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+@keyframes kpiIn { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .kpi-card { animation: none; } .kpi-card.clickable:hover { transform: none; } }
 
 .kpi-header {
   display: flex;
@@ -827,6 +889,8 @@ select {
   transition: all .15s;
   text-decoration: none;
 }
+.btn:active { transform: scale(.96); }
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
 
 .btn-primary {
   background: var(--brand);
@@ -1485,12 +1549,17 @@ select {
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 40; background: rgba(10,10,14,.55);
   display: flex; align-items: center; justify-content: center; padding: 16px;
+  animation: backdropIn .18s ease;
 }
 .modal-backdrop[hidden] { display: none; }
 .modal {
   background: var(--surface); color: var(--fg); border-radius: 16px; width: 100%; max-width: 520px;
   max-height: 90%; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  animation: modalIn .22s cubic-bezier(.2,.8,.3,1.1);
 }
+@keyframes backdropIn { from { opacity: 0; } }
+@keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .modal-backdrop, .modal { animation: none; } }
 .m-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 22px 14px; border-bottom: 1px solid var(--border); }
 .m-head h2 { font-size: 18px; font-weight: 800; }
 .m-head p { font-size: 12.5px; color: var(--fg-muted); margin-top: 2px; }
@@ -1513,7 +1582,10 @@ select {
   background: var(--fg); color: var(--bg); padding: 12px 20px; border-radius: 10px;
   font-weight: 700; font-size: 13.5px; box-shadow: 0 6px 20px rgba(0,0,0,.25); z-index: 60;
   max-width: calc(100% - 32px);
+  animation: toastIn .28s cubic-bezier(.2,.8,.3,1.1);
 }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 @media (max-width: 900px) {
   .builder-grid { grid-template-columns: 1fr; }
@@ -1731,20 +1803,52 @@ input[type="password"]:focus { border-color: var(--brand); box-shadow: 0 0 0 3px
   position: fixed; inset: 0; z-index: 70; background: var(--bg);
   display: flex; align-items: center; justify-content: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
 }
 .login-wrap[hidden] { display: none; }
+.lg-blob {
+  position: absolute; border-radius: 50%; filter: blur(60px); opacity: .28; pointer-events: none;
+  background: var(--brand); animation: lgBlobFloat 11s ease-in-out infinite;
+}
+.lg-blob-a { width: 320px; height: 320px; top: -110px; inset-inline-start: -90px; }
+.lg-blob-b { width: 280px; height: 280px; bottom: -110px; inset-inline-end: -70px; background: var(--brand-dark, #c2410c); animation-delay: -5.5s; }
+@keyframes lgBlobFloat { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(18px,-22px) scale(1.08); } }
 .login-card {
   width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border);
   border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.15); padding: 28px 26px;
   display: flex; flex-direction: column; gap: 16px;
+  position: relative; z-index: 1;
+  animation: lgCardPop .5s cubic-bezier(.2,.9,.3,1.15);
 }
+@keyframes lgCardPop { from { opacity: 0; transform: translateY(18px) scale(.96); } }
+.login-card > * { animation: lgFieldIn .4s both; }
+.login-card > *:nth-child(1) { animation-delay: .04s; }
+.login-card > *:nth-child(2) { animation-delay: .09s; }
+.login-card > *:nth-child(3) { animation-delay: .14s; }
+.login-card > *:nth-child(4) { animation-delay: .19s; }
+.login-card > *:nth-child(5) { animation-delay: .24s; }
+.login-card > *:nth-child(6) { animation-delay: .29s; }
+.login-card > *:nth-child(7) { animation-delay: .34s; }
+.login-card > *:nth-child(8) { animation-delay: .39s; }
+@keyframes lgFieldIn { from { opacity: 0; transform: translateY(9px); } }
 .login-brand { display: flex; align-items: center; gap: 12px; }
-.login-brand .logo-icon { width: 44px; height: 44px; background: var(--brand); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-.login-name { font-size: 20px; font-weight: 800; color: var(--fg); line-height: 1.2; }
+.login-brand .logo-icon { width: 44px; height: 44px; background: var(--brand); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; animation: lgLogoBob 3s ease-in-out infinite; }
+@keyframes lgLogoBob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(-5deg); } }
+.login-name { font-family: 'Fredoka', 'Cairo', sans-serif; font-size: 22px; font-weight: 700; color: var(--fg); line-height: 1.2; }
 .login-sub { font-size: 12px; color: var(--fg-muted); }
 .login-card h1 { font-size: 18px; font-weight: 800; }
 .login-err { min-height: 18px; font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--danger) 80%, var(--fg)); line-height: 1.6; }
 .login-card .btn { justify-content: center; }
+.login-card .btn.loading { pointer-events: none; opacity: .85; }
+.login-card .btn.success { background: var(--success); }
+.btn-spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; display: inline-block; animation: ph-spin .6s linear infinite; vertical-align: -2px; margin-inline-start: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  .lg-blob { animation: none; }
+  .login-card { animation: none; }
+  .login-card > * { animation: none; }
+  .login-brand .logo-icon { animation: none; }
+  .btn-spinner { animation: none; }
+}
 .setup-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   background: color-mix(in srgb, var(--warning) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
@@ -1836,10 +1940,12 @@ body.ui-mobile .bottom-nav {
   padding: 6px 2px; background: none; border: 0; color: var(--sidebar-text);
   font-family: inherit; cursor: pointer; position: relative;
 }
-.bn-item svg { width: 20px; height: 20px; opacity: .75; }
+.bn-item svg { width: 20px; height: 20px; opacity: .75; transition: opacity .2s, transform .25s cubic-bezier(.34,1.56,.64,1); }
 .bn-item span { font-size: 10px; font-weight: 700; }
 .bn-item.active { color: var(--brand); }
-.bn-item.active svg { opacity: 1; }
+.bn-item.active svg { opacity: 1; transform: translateY(-2px) scale(1.12); }
+.bn-item:active svg { transform: scale(.85); }
+@media (prefers-reduced-motion: reduce) { .bn-item svg { transition: none; } }
 .bn-item .bn-badge {
   position: absolute; top: -2px; inset-inline-end: 18px; background: var(--brand); color: #fff;
   font-size: 9px; font-weight: 800; border-radius: 999px; min-width: 14px; height: 14px;
@@ -1879,15 +1985,17 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
 
 
 <div class="login-wrap" id="login" hidden>
+  <div class="lg-blob lg-blob-a"></div>
+  <div class="lg-blob lg-blob-b"></div>
   <form class="login-card" onsubmit="doLogin(event)">
-    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v41</div></div></div>
+    <div class="login-brand"><div class="logo-icon">🥐</div><div><div class="login-name">Bakelyn</div><div class="login-sub">نظام الطلبات · v1</div></div></div>
     <h1 id="lg-title">تسجيل الدخول</h1>
     <div class="hint" id="lg-note" hidden></div>
     <div class="form-group"><label for="lg-user">اسم المستخدم</label><input type="text" id="lg-user" dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
     <div class="form-group"><label for="lg-pass">كلمة المرور</label><input type="password" id="lg-pass" dir="ltr" autocomplete="current-password"></div>
     <div class="form-group" id="lg-pass2-wrap" hidden><label for="lg-pass2">تأكيد كلمة المرور</label><input type="password" id="lg-pass2" dir="ltr" autocomplete="new-password"></div>
     <div class="login-err" id="lg-err" role="alert"></div>
-    <button class="btn btn-primary" id="lg-btn" type="submit">دخول</button>
+    <button class="btn btn-primary" id="lg-btn" type="submit"><span id="lg-btn-label">دخول</span></button>
     <button class="btn btn-secondary" id="lg-alt" type="button" onclick="loginAlt()" hidden></button>
   </form>
   <div class="app-credit on-login">برمجة <b>أحمد دياب</b><a class="wa-ic" href="https://wa.me/201091936251" target="_blank" rel="noopener" title="تواصل عبر واتساب: 01091936251" aria-label="تواصل عبر واتساب"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.8 2z"/></svg></a></div>
@@ -2053,8 +2161,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Dashboard ── -->
       <div class="view active" id="view-dashboard">
         <div class="page-header">
-          <h1 id="dash-hello">مرحباً 👋</h1>
-          <p id="dash-date">ملخص اليوم</p>
+          <div class="ph-text">
+            <h1 id="dash-hello">مرحباً 👋</h1>
+            <p id="dash-date">ملخص اليوم</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
 
         <div class="kpi-row">
@@ -2105,8 +2216,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Add Order ── -->
       <div class="view" id="view-add-order">
         <div class="page-header">
-          <h1>إضافة طلب جديد</h1>
-          <p>سجّل العميل، ثم أضف أي عدد من الأصناف إلى الفاتورة، ثم أكّد الدفع</p>
+          <div class="ph-text">
+            <h1>إضافة طلب جديد</h1>
+            <p>سجّل العميل، ثم أضف أي عدد من الأصناف إلى الفاتورة، ثم أكّد الدفع</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
 
         <div class="order-wizard wide">
@@ -2152,8 +2266,17 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                   <div class="hint" style="margin-top:6px">العميل يُختار من العملاء المسجلين فقط. لو مش موجود اضغط «عميل جديد» وسجّله بسرعة.</div>
                 </div>
                 <div class="form-group">
-                  <label for="c-date">تاريخ التسليم</label>
-                  <input type="date" id="c-date">
+                  <label for="c-date">تاريخ التسليم <span class="req">*</span></label>
+                  <input type="date" id="c-date" required>
+                </div>
+                <div class="form-group">
+                  <label for="c-invref">مرجع الفاتورة (اختياري)</label>
+                  <input type="text" id="c-invref" autocomplete="off" placeholder="مرجع خارجي لو موجود">
+                </div>
+                <div class="form-group">
+                  <label for="c-source">مصدر الطلب <span class="req">*</span></label>
+                  <select id="c-source" required><option value="">— اختر —</option></select>
+                  <div class="hint" id="c-source-hint"></div>
                 </div>
                 <div class="form-group full">
                   <label>طريقة التسليم</label>
@@ -2162,8 +2285,13 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                     <button type="button" class="seg-btn" data-v="توصيل" onclick="setDeliver(this)">توصيل</button>
                   </div>
                 </div>
+                <div class="form-group full" id="area-group" hidden>
+                  <label for="c-area">المنطقة <span class="req">*</span></label>
+                  <select id="c-area"><option value="">— اختر المنطقة —</option></select>
+                  <div class="hint" id="c-area-hint"></div>
+                </div>
                 <div class="form-group full" id="addr-group" hidden>
-                  <label for="c-address">عنوان التوصيل</label>
+                  <label for="c-address">عنوان التوصيل <span class="req">*</span></label>
                   <input type="text" id="c-address" placeholder="الحي، الشارع، رقم المبنى">
                 </div>
                 <div class="form-group full">
@@ -2294,8 +2422,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <div class="view" id="view-orders">
         <div class="orders-head">
           <div class="page-header" style="margin-bottom:0">
-            <h1>الطلبات</h1>
-            <p id="orders-sub">متابعة الطلبات من الاستلام حتى التسليم</p>
+            <div class="ph-text">
+              <h1>الطلبات</h1>
+              <p id="orders-sub">متابعة الطلبات من الاستلام حتى التسليم</p>
+            </div>
+            <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
           </div>
           <div class="orders-tools">
             <div class="topbar-search" style="height:38px">
@@ -2347,57 +2478,76 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Collections (التحصيلات) ── -->
       <div class="view" id="view-collections">
         <div class="page-header">
-          <h1>التحصيلات</h1>
-          <p>اختر عميل وحصّل من فواتيره المفتوحة، وممكن توزّع مبلغ واحد على أكتر من فاتورة دفعة واحدة</p>
+          <div class="ph-text">
+            <h1>التحصيلات</h1>
+            <p>اختر عميل وحصّل من فواتيره المفتوحة، وممكن توزّع مبلغ واحد على أكتر من فاتورة دفعة واحدة</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
 
-        <div class="form-card" style="margin-bottom:16px">
-          <div class="form-section-title"><span>👤</span> العميل</div>
-          <div class="cust-pick">
-            <div class="cp-row" id="cl-search-row">
-              <input type="text" id="cl-search" autocomplete="off" placeholder="ابحث بالاسم أو رقم الجوال" oninput="clSearch()" onfocus="clSearch()" onkeydown="clKey(event)" onblur="setTimeout(clHide,150)" role="combobox" aria-expanded="false" aria-controls="cl-results">
+        <div class="seg" id="cl-mode" style="margin-bottom:16px">
+          <button type="button" class="seg-btn active" data-v="add" onclick="clSetMode('add')">➕ تحصيل جديد</button>
+          <button type="button" class="seg-btn" data-v="view" onclick="clSetMode('view')">📄 كل التحصيلات</button>
+        </div>
+
+        <div id="cl-add-wrap">
+          <div class="form-card" style="margin-bottom:16px">
+            <div class="form-section-title"><span>👤</span> العميل</div>
+            <div class="cust-pick">
+              <div class="cp-row" id="cl-search-row">
+                <input type="text" id="cl-search" autocomplete="off" placeholder="ابحث بالاسم أو رقم الجوال" oninput="clSearch()" onfocus="clSearch()" onkeydown="clKey(event)" onblur="setTimeout(clHide,150)" role="combobox" aria-expanded="false" aria-controls="cl-results">
+              </div>
+              <div class="cp-list" id="cl-results" role="listbox" hidden></div>
+              <div class="cp-card" id="cl-card" hidden></div>
             </div>
-            <div class="cp-list" id="cl-results" role="listbox" hidden></div>
-            <div class="cp-card" id="cl-card" hidden></div>
+          </div>
+
+          <div id="cl-debtors-wrap"></div>
+
+          <div id="cl-work" hidden>
+            <div id="cl-rows-wrap"></div>
+
+            <div class="form-card" id="cl-pay-box" style="margin-top:16px" hidden>
+              <div class="form-section-title"><span>💵</span> تسجيل التحصيل</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="cl-amount">المبلغ المحصّل الآن (ج.م)</label>
+                  <input type="number" id="cl-amount" step="any" min="0" placeholder="0">
+                </div>
+                <div class="form-group full" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="clAutoDistribute()">⇆ وزّع على الفواتير (الأقدم أولاً)</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="clPayAllRemaining()">تحصيل الكل</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="clClearAmts()">تصفير</button>
+                </div>
+                <div class="form-group">
+                  <label for="cl-method">طريقة الدفع <span class="req">*</span></label>
+                  <select id="cl-method"><option value="">— اختر —</option></select>
+                </div>
+                <div class="form-group">
+                  <label for="cl-date">تاريخ الدفع</label>
+                  <input type="date" id="cl-date">
+                </div>
+                <div class="form-group full">
+                  <label for="cl-note">ملاحظة</label>
+                  <input type="text" id="cl-note" placeholder="مثال: تحصيل جزئي من فاتورتين">
+                </div>
+              </div>
+              <div class="hint">الموزّع على الفواتير دلوقتي: <b id="cl-alloc">0</b> ج.م — عدّل خانة أي فاتورة يدويًا لو عايز توزيع مختلف.</div>
+              <div class="login-err" id="cl-err"></div>
+              <div class="form-actions" style="justify-content:flex-start">
+                <button class="btn btn-primary" id="cl-save" onclick="clSave()">حفظ التحصيل</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div id="cl-debtors-wrap"></div>
-
-        <div id="cl-work" hidden>
-          <div id="cl-rows-wrap"></div>
-
-          <div class="form-card" id="cl-pay-box" style="margin-top:16px" hidden>
-            <div class="form-section-title"><span>💵</span> تسجيل التحصيل</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="cl-amount">المبلغ المحصّل الآن (ج.م)</label>
-                <input type="number" id="cl-amount" step="any" min="0" placeholder="0">
-              </div>
-              <div class="form-group full" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="clAutoDistribute()">⇆ وزّع على الفواتير (الأقدم أولاً)</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="clPayAllRemaining()">تحصيل الكل</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="clClearAmts()">تصفير</button>
-              </div>
-              <div class="form-group">
-                <label for="cl-method">طريقة الدفع <span class="req">*</span></label>
-                <select id="cl-method"><option value="">— اختر —</option></select>
-              </div>
-              <div class="form-group">
-                <label for="cl-date">تاريخ الدفع</label>
-                <input type="date" id="cl-date">
-              </div>
-              <div class="form-group full">
-                <label for="cl-note">ملاحظة</label>
-                <input type="text" id="cl-note" placeholder="مثال: تحصيل جزئي من فاتورتين">
-              </div>
-            </div>
-            <div class="hint">الموزّع على الفواتير دلوقتي: <b id="cl-alloc">0</b> ج.م — عدّل خانة أي فاتورة يدويًا لو عايز توزيع مختلف.</div>
-            <div class="login-err" id="cl-err"></div>
-            <div class="form-actions" style="justify-content:flex-start">
-              <button class="btn btn-primary" id="cl-save" onclick="clSave()">حفظ التحصيل</button>
+        <div id="cl-view-wrap" hidden>
+          <div class="form-card" style="margin-bottom:16px">
+            <div class="cp-row">
+              <input type="text" id="cl-vq" autocomplete="off" placeholder="ابحث بالعميل أو رقم الفاتورة أو رقم الدفعة" oninput="CLV.q=this.value;renderCollectionsView()">
             </div>
           </div>
+          <div id="cl-view-body"></div>
         </div>
       </div>
 
@@ -2439,8 +2589,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Customers ── -->
       <div class="view" id="view-customers">
         <div class="page-header">
-          <h1>العملاء</h1>
-          <p id="cu-sub">العملاء المسجلون في شيت Clients</p>
+          <div class="ph-text">
+            <h1>العملاء</h1>
+            <p id="cu-sub">العملاء المسجلون في شيت Clients</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="filters-bar">
           <div class="topbar-search" style="min-width:220px;flex:1;max-width:340px">
@@ -2448,7 +2601,6 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
             <input type="text" id="cu-q" placeholder="ابحث بالاسم أو الجوال أو المدينة أو المنطقة أو العنوان…" oninput="CU.q=this.value;renderCustomers()" aria-label="بحث في العملاء">
           </div>
           <div class="seg" id="cu-sort" hidden></div>
-          <button class="btn btn-secondary" style="height:36px;padding:0 14px" onclick="reloadData()">تحديث</button>
           <button class="btn btn-primary" data-perm="customers:a" style="height:36px;padding:0 14px" onclick="openCustomerEditor()">+ إضافة عميل</button>
         </div>
         <div class="customer-cards" id="cu-grid"></div>
@@ -2457,15 +2609,17 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Items ── -->
       <div class="view" id="view-items">
         <div class="page-header">
-          <h1>الأصناف</h1>
-          <p id="items-sub">قائمة المنتجات وأسعارها من شيت Items</p>
+          <div class="ph-text">
+            <h1>الأصناف</h1>
+            <p id="items-sub">قائمة المنتجات وأسعارها من شيت Items</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="filters-bar">
           <div class="topbar-search" style="min-width:220px;flex:1;max-width:340px">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input type="text" id="items-q" placeholder="ابحث باسم الصنف أو كوده…" oninput="ITEMS.q=this.value;renderItems()" aria-label="بحث في الأصناف">
           </div>
-          <button class="btn btn-secondary" style="height:36px;padding:0 14px" onclick="reloadData()">تحديث</button>
           <button class="btn btn-primary" data-perm="items:a" style="height:36px;padding:0 14px" onclick="openItemEditor()">+ إضافة صنف</button>
         </div>
         <div class="item-tabs" id="items-tabs" role="tablist"></div>
@@ -2475,8 +2629,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Catalog: categories / groups / options / links ── -->
       <div class="view" id="view-catalog">
         <div class="page-header">
-          <h1>التصنيفات والخيارات</h1>
-          <p id="cg-sub">التصنيفات والمجموعات والاختيارات وربطها بالأصناف</p>
+          <div class="ph-text">
+            <h1>التصنيفات والخيارات</h1>
+            <p id="cg-sub">التصنيفات والمجموعات والاختيارات وربطها بالأصناف</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="setup-banner" id="cg-warn" hidden><span>كود Apps Script المنشور قديم، فالتعديل هنا معطّل. الصق الكود الجديد (Code.gs) وانشر نسخة جديدة ثم أعد فتح الموقع.</span></div>
         <div class="filters-bar">
@@ -2485,7 +2642,6 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input type="text" id="cg-q" placeholder="بحث…" oninput="catSearch(this.value)" aria-label="بحث">
           </div>
-          <button class="btn btn-secondary" style="height:36px;padding:0 14px" onclick="reloadData()">تحديث</button>
           <button class="btn btn-primary" id="cg-add" data-perm="catalog:a" style="height:36px;padding:0 14px" onclick="openCg(CAT.sec)">+ إضافة</button>
         </div>
         <div id="cg-body"></div>
@@ -2494,8 +2650,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Reports ── -->
       <div class="view" id="view-reports">
         <div class="page-header no-print">
-          <h1>التقارير</h1>
-          <p>من شيت المبيعات والمدفوعات مباشرة</p>
+          <div class="ph-text">
+            <h1>التقارير</h1>
+            <p>من شيت المبيعات والمدفوعات مباشرة</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="rp-tools no-print">
           <div class="seg" id="rp-tabs"></div>
@@ -2515,14 +2674,18 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Settings ── -->
       <div class="view" id="view-settings">
         <div class="page-header">
-          <h1>الإعدادات</h1>
-          <p>حسابك، المستخدمون وصلاحياتهم، وتفضيلات الموقع</p>
+          <div class="ph-text">
+            <h1>الإعدادات</h1>
+            <p>حسابك، المستخدمون وصلاحياتهم، وتفضيلات الموقع</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="settings-grid">
           <div class="settings-nav" id="set-nav">
             <div class="sn-item active" data-sec="account" tabindex="0" onclick="setSec('account')">👤 حسابي</div>
             <div class="sn-item" data-sec="users" data-perm="settings:v" tabindex="0" onclick="setSec('users')">👥 المستخدمون</div>
             <div class="sn-item" data-sec="prefs" tabindex="0" onclick="setSec('prefs')">🎨 التفضيلات</div>
+            <div class="sn-item" data-sec="log" data-perm="log:v" tabindex="0" onclick="setSec('log')">🧾 سجل الحركات</div>
           </div>
 
           <div class="settings-content">
@@ -2589,6 +2752,28 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                 <p class="hint" id="ui-pref-hint" style="margin-top:10px"></p>
               </div>
             </div>
+
+            <div id="set-log" hidden>
+              <div class="setting-section">
+                <div class="conn-head">
+                  <h3>سجل الحركات</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="loadLog()">تحديث</button>
+                </div>
+                <div class="form-group" style="max-width:320px;margin-bottom:12px">
+                  <input type="text" id="log-search" placeholder="بحث بالمستخدم أو الشيت أو التفاصيل..." oninput="renderLog()">
+                </div>
+                <div id="log-msg" class="conn-result" style="margin:0 0 12px"></div>
+                <div class="data-table-wrap">
+                  <div class="table-scroll">
+                    <table class="data-table orders-table">
+                      <thead><tr><th>التاريخ والوقت</th><th>المستخدم</th><th>الحركة</th><th>الجدول</th><th>التفاصيل</th></tr></thead>
+                      <tbody id="log-rows"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <p class="hint" style="margin-top:10px">آخر 500 حركة، الأحدث أولاً. السجل يبدأ يتسجل تلقائيًا بمجرد ربط شيت «Log» من إعدادات الأدمن — مفيش داعي تكتب فيه حاجة بنفسك.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2596,8 +2781,11 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
       <!-- ── Admin ── -->
       <div class="view" id="view-admin">
         <div class="page-header">
-          <h1>إعدادات الأدمن</h1>
-          <p>الربط مع Google Sheets وكود Apps Script</p>
+          <div class="ph-text">
+            <h1>إعدادات الأدمن</h1>
+            <p>الربط مع Google Sheets وكود Apps Script</p>
+          </div>
+          <button type="button" class="ph-refresh" onclick="manualRefresh(this)" title="تحديث البيانات" aria-label="تحديث البيانات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         </div>
         <div class="settings-grid" style="grid-template-columns:minmax(0,1fr)">
           <div class="settings-content">
@@ -2694,7 +2882,7 @@ var ADMINS = [
 // مدة بقاء تسجيل الدخول بالثواني (الحد الأقصى المسموح به 21600 = 6 ساعات)
 var SESSION_SECONDS = 21600;
 
-var TABS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
+var TABS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin', 'log'];
 
 // من يقرأ أي جدول (يكفي وجود صلاحية فتح v في أحد هذه التابات)
 var READ_TABS = {
@@ -2732,8 +2920,8 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 12, secured: secured, configured: !!um, admins: builtin_().length });
-    if (action === 'login') return json_(login_(body, um, secured));
+    if (action === 'status') return json_({ ok: true, v: 13, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'login') return json_(login_(body, um, secured, cfg));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
     var user = null;
@@ -2744,7 +2932,7 @@ function handle_(params, body) {
 
     switch (action) {
       case 'me':           return json_({ ok: true, user: user ? pub_(user) : null });
-      case 'logout':       CacheService.getScriptCache().remove('s_' + token); return json_({ ok: true });
+      case 'logout':       CacheService.getScriptCache().remove('s_' + token); logAction_(cfg, user, 'تسجيل خروج', '', user ? user.username : ''); return json_({ ok: true });
       case 'init':         return json_(init_(user, cfg));
       case 'ping':         need_(user, 'admin', 'v'); return json_(ping_(cfg));
       case 'setConfig':    need_(user, 'admin', 'e'); return json_(setConfig_(body));
@@ -2753,10 +2941,11 @@ function handle_(params, body) {
       case 'update':       return json_(update_(body, user, cfg));
       case 'delete':       return json_(delete_(body, user, cfg));
       case 'listUsers':    return json_(listUsers_(user, um));
-      case 'saveUser':     return json_(saveUser_(body, user, um));
-      case 'deleteUser':   return json_(deleteUser_(body, user, um));
-      case 'changePassword': return json_(changePassword_(body, user, um));
+      case 'saveUser':     return json_(saveUser_(body, user, um, cfg));
+      case 'deleteUser':   return json_(deleteUser_(body, user, um, cfg));
+      case 'changePassword': return json_(changePassword_(body, user, um, cfg));
       case 'setMobileLayout': return json_(setMobileLayout_(body, user, um));
+      case 'readLog':       need_(user, 'log', 'v'); return json_(readLog_(body, cfg));
       default:             return json_({ ok: false, error: 'unknown action' });
     }
   } catch (err) {
@@ -2843,7 +3032,7 @@ function anyOf_(user, rules) {
  * أعمدة اختيارية: الاسم الكامل، مفعّل، آخر دخول.
  */
 
-var TAB_NAMES = { dashboard: 'Dashboard', 'add-order': 'Add Order', orders: 'Orders', collections: 'Collections', customers: 'Customers', items: 'Items', catalog: 'Catalog', reports: 'Reports', settings: 'Settings', admin: 'Admin' };
+var TAB_NAMES = { dashboard: 'Dashboard', 'add-order': 'Add Order', orders: 'Orders', collections: 'Collections', customers: 'Customers', items: 'Items', catalog: 'Catalog', reports: 'Reports', settings: 'Settings', admin: 'Admin', log: 'Log' };
 var TAB_ALIASES = {
   dashboard: ['dashboard', 'home', 'الرئيسية'],
   'add-order': ['addorder', 'neworder', 'اضافةطلب'],
@@ -2854,7 +3043,8 @@ var TAB_ALIASES = {
   catalog: ['catalog', 'options', 'choices', 'categories', 'الخيارات', 'التصنيفات', 'التصنيفاتوالخيارات'],
   reports: ['reports', 'التقارير'],
   settings: ['settings', 'الاعدادات'],
-  admin: ['admin', 'adminsettings', 'اعداداتالادمن']
+  admin: ['admin', 'adminsettings', 'اعداداتالادمن'],
+  log: ['log', 'activitylog', 'السجل', 'سجلالحركات']
 };
 
 function normKey_(s) {
@@ -3014,7 +3204,7 @@ function appendObjs_(sh, um, objs) {
   sh.getRange(start, 1, out.length, head.length).setValues(out);
 }
 
-function login_(b, um, secured) {
+function login_(b, um, secured, cfg) {
   if (!secured) throw new Error('not secured');
   var uname = String(b.username || '').trim().toLowerCase();
   var cache = CacheService.getScriptCache();
@@ -3033,6 +3223,7 @@ function login_(b, um, secured) {
     var sh = sheet_(um.sheet), now = nowStr_();
     u.rows.forEach(function (row) { setCells_(sh, um, row, { lastLogin: now }); });
   }
+  logAction_(cfg, u, 'تسجيل دخول', '', u.username);
   return { ok: true, token: token, user: pub_(u) };
 }
 
@@ -3057,7 +3248,7 @@ function hasAdmin_(list) {
   });
 }
 
-function saveUser_(b, user, um) {
+function saveUser_(b, user, um, cfg) {
   if (!um) throw new Error('users not mapped');
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -3115,13 +3306,14 @@ function saveUser_(b, user, um) {
       });
     }
     if (toAppend.length) appendObjs_(sh, um, toAppend);
+    logAction_(cfg, user, isNew ? 'إضافة' : 'تعديل', um.sheet, 'المستخدم ' + uname + (pw ? ' (مع تغيير كلمة المرور)' : '') + ' — الصلاحيات: ' + Object.keys(perms).map(function (t) { return t + ':' + perms[t]; }).join('، '));
     return { ok: true, created: isNew };
   } finally {
     lock.releaseLock();
   }
 }
 
-function deleteUser_(b, user, um) {
+function deleteUser_(b, user, um, cfg) {
   if (!um) throw new Error('users not mapped');
   need_(user, 'settings', 'd');
   var lock = LockService.getScriptLock();
@@ -3137,13 +3329,14 @@ function deleteUser_(b, user, um) {
     if (user && !hasAdmin_(rest)) throw new Error('cannot lock');
     var sh = sheet_(um.sheet);
     target.rows.slice().sort(function (x, y) { return y - x; }).forEach(function (row) { sh.deleteRow(row); });
+    logAction_(cfg, user, 'حذف', um.sheet, 'المستخدم ' + target.username);
     return { ok: true };
   } finally {
     lock.releaseLock();
   }
 }
 
-function changePassword_(b, user, um) {
+function changePassword_(b, user, um, cfg) {
   if (!user) throw new Error('login required');
   if (user.builtin) throw new Error('builtin user');
   if (!um) throw new Error('users not mapped');
@@ -3152,6 +3345,7 @@ function changePassword_(b, user, um) {
   if (!checkPw_(user.password, String(b.oldPassword || ''))) throw new Error('wrong password');
   var sh = sheet_(um.sheet), hashed = makePw_(np);
   user.rows.forEach(function (row) { setCells_(sh, um, row, { password: hashed }); });
+  logAction_(cfg, user, 'تعديل', um.sheet, 'غيّر كلمة مروره بنفسه');
   return { ok: true };
 }
 
@@ -3166,6 +3360,53 @@ function setMobileLayout_(b, user, um) {
   var sh = sheet_(um.sheet);
   user.rows.forEach(function (row) { setCells_(sh, um, row, { mobileLayout: v }); });
   return { ok: true };
+}
+
+/* ───────── سجل الحركات (Log) ─────────
+ * اختياري بالكامل: لو شيت Log مش متربط بعد، logAction_ ما بتعملش حاجة ومفيش أي كسر لباقي الموقع.
+ */
+
+function logMap_(cfg) {
+  var m = cfg.mapping && cfg.mapping.log;
+  if (!m || !m.sheet || !m.cols) return null;
+  var c = m.cols;
+  if (!c.date || !c.user || !c.action || !c.table || !c.details) return null;
+  if (!ss_().getSheetByName(m.sheet)) return null;
+  return m;
+}
+
+function logAction_(cfg, user, action, table, details) {
+  try {
+    var lm = logMap_(cfg);
+    if (!lm) return;
+    var sh = sheet_(lm.sheet);
+    var head = headers_(sh);
+    var row = head.map(function () { return ''; });
+    function set(k, v) { var col = lm.cols[k], i = col ? head.indexOf(col) : -1; if (i >= 0) row[i] = v; }
+    set('date', nowStr_());
+    set('user', user ? (user.name || user.username) : 'بدون تسجيل دخول');
+    set('action', action);
+    set('table', table || '');
+    set('details', details || '');
+    sh.getRange(sh.getLastRow() + 1, 1, 1, head.length).setValues([row]);
+  } catch (e) { /* السجل لا يجب أن يعطّل أي عملية أصلية */ }
+}
+
+function condsText_(b) {
+  if (b.match && typeof b.match === 'object') {
+    return Object.keys(b.match).map(function (k) { return k + '=' + b.match[k]; }).join('، ');
+  }
+  return b.keyCol ? (b.keyCol + '=' + b.keyValue) : '';
+}
+
+function readLog_(b, cfg) {
+  var lm = logMap_(cfg);
+  if (!lm) return { ok: true, mapped: false, headers: [], rows: [] };
+  var sh = sheet_(lm.sheet);
+  var all = rows_(sh, 0);
+  all.reverse(); // الأحدث أولاً
+  var limit = Number(b.limit) || 500;
+  return { ok: true, mapped: true, headers: headers_(sh), rows: all.slice(0, limit), cols: lm.cols };
 }
 
 /* ───────── قراءة وكتابة الجداول مع فحص الصلاحيات ───────── */
@@ -3211,7 +3452,7 @@ function init_(user, cfg) {
   var m = cfg.mapping || {};
   var data = {};
   Object.keys(m).forEach(function (t) {
-    if (t === 'users' || !m[t] || !m[t].sheet) return;
+    if (t === 'users' || t === 'log' || !m[t] || !m[t].sheet) return;
     var allowed = !user || (READ_TABS[t] || []).some(function (tab) { return can_(user, tab, 'v'); });
     var sh = ss_().getSheetByName(m[t].sheet);
     if (allowed && sh && !data[m[t].sheet]) data[m[t].sheet] = { headers: headers_(sh), rows: rows_(sh, 0) };
@@ -3284,6 +3525,10 @@ function append_(b, user, cfg) {
       if (i >= 0) sh.getRange(start, i + 1, out.length, 1).setNumberFormat('@');
     });
     sh.getRange(start, 1, out.length, head.length).setValues(out);
+    var addDetails = (b.rows || []).map(function (r) {
+      return Object.keys(r).filter(function (k) { return r[k] !== '' && r[k] != null; }).map(function (k) { return k + ': ' + r[k]; }).join('، ');
+    }).join(' | ');
+    logAction_(cfg, user, 'إضافة', b.sheet, (id !== null ? 'رقم: ' + id + ' — ' : '') + addDetails);
     return { ok: true, id: id, added: out.length };
   } finally {
     lock.releaseLock();
@@ -3399,6 +3644,10 @@ function update_(b, user, cfg) {
         updated++;
       }
     }
+    if (updated > 0) {
+      var updDetails = 'الشرط: ' + condsText_(b) + ' | التعديل: ' + Object.keys(b.values || {}).map(function (k) { return k + ': ' + b.values[k]; }).join('، ');
+      logAction_(cfg, user, 'تعديل', b.sheet, updDetails);
+    }
     return { ok: true, updated: updated };
   } finally {
     lock.releaseLock();
@@ -3419,6 +3668,7 @@ function delete_(b, user, cfg) {
     for (var i = v.length - 1; i >= 1; i--) {
       if (rowMatch_(v[i], conds)) { sh.deleteRow(i + 1); removed++; }
     }
+    if (removed > 0) logAction_(cfg, user, 'حذف', b.sheet, 'الشرط: ' + condsText_(b) + ' | عدد الصفوف المحذوفة: ' + removed);
     return { ok: true, removed: removed };
   } finally {
     lock.releaseLock();
@@ -3433,7 +3683,7 @@ function delete_(b, user, cfg) {
 
 <script>
 // ⇩ استبدل هذا السطر بالسطر الذي تنسخه من: إعدادات الأدمن ← تثبيت الإعدادات في الموقع
-const DEFAULT_CONFIG = {"scriptUrl":"https://script.google.com/macros/s/AKfycbzKBAuGgnzv0PoZ31UKE1gogdVHTomzVD1xRkuoGJ5fD0jWtWaUvbg3WZfsx01nhrgqjA/exec","key":""};
+const DEFAULT_CONFIG = { scriptUrl: "", key: "", mapping: {} };
 // أدمن محلي: يدخل الموقع مباشرة بدون أي اتصال بالشيت (لإعداد الربط). كلمة المرور ظاهرة في هذا الملف، فلا ترفعه لمكان عام.
 const LOCAL_ADMINS = [{ username: 'AA', password: '20236', name: 'المدير العام' }];
 
@@ -3457,25 +3707,6 @@ function toast(msg) {
 }
 
 /* ───────── Catalog ───────── */
-const PRODUCTS = [
-  { name: 'كرواسون',       price: 15,  emoji: '🥐' },
-  { name: 'باغيت فرنسي',   price: 12,  emoji: '🥖' },
-  { name: 'باغيت إيطالي',  price: 14,  emoji: '🍞' },
-  { name: 'توست',          price: 8,   emoji: '🫓' },
-  { name: 'كيش',           price: 18,  emoji: '🥧' },
-  { name: 'كب كيك',        price: 20,  emoji: '🧁' },
-  { name: 'تشيز كيك',      price: 85,  emoji: '🍰' },
-  { name: 'تورتة',         price: 120, emoji: '🎂' }
-];
-const FILLS = [
-  { name: 'سادة', price: 0 }, { name: 'جبنة موزاريلا', price: 5 }, { name: 'جبنة شيدر', price: 4 },
-  { name: 'دجاج مشوي', price: 8 }, { name: 'لحم بقري', price: 10 }, { name: 'سبانخ وجبنة', price: 6 },
-  { name: 'تونة', price: 7 }, { name: 'بيض وجبنة', price: 5 }, { name: 'شوكولاتة', price: 6 }
-];
-const EXTRAS = ['زعتر', 'سمسم', 'أعشاب', 'فلفل أحمر', 'بصل كراميل', 'مشروم', 'زيتون', 'صلصة ثوم'];
-const EXTRA_PRICE = 2;
-const SIZES = [{ name: 'صغير', m: 0.8 }, { name: 'وسط', m: 1 }, { name: 'كبير', m: 1.5 }, { name: 'عائلي', m: 2 }];
-
 const STATUS = {
   new:      { label: 'جديد',  pill: 'pill-new' },
   progress: { label: 'جاري',  pill: 'pill-progress' },
@@ -3486,51 +3717,8 @@ const STATUS = {
 const NEXT = { new: 'progress', progress: 'ready', ready: 'done' };
 const NEXT_LABEL = { new: 'ابدأ التحضير', progress: 'جاهز للتسليم', ready: 'تم التسليم' };
 
-function unitPrice(name, fill, extras, size) {
-  const p = PRODUCTS.find(x => x.name === name).price;
-  const f = FILLS.find(x => x.name === fill).price;
-  const s = SIZES.find(x => x.name === size).m;
-  return Math.round((p + f + extras.length * EXTRA_PRICE) * s);
-}
-function mk(name, fill, extras, size, qty, note) {
-  return { name, fill, extras, size, qty, note: note || '', unit: unitPrice(name, fill, extras, size) };
-}
-
-/* ───────── Data (sample) ───────── */
-let customers = [
-  { name: 'سارة العمري', phone: '0501234567' },
-  { name: 'فهد القحطاني', phone: '0552345678' },
-  { name: 'منى السالم', phone: '0543456789' },
-  { name: 'عبدالله النجار', phone: '0584567890' },
-  { name: 'ريم الزهراني', phone: '0565678901' },
-  { name: 'خالد الدوسري', phone: '0506789012' },
-  { name: 'نورة الحربي', phone: '0537890123' }
-];
-let orders = [
-  { id: 1047, customer: 'سارة العمري', phone: '0501234567', status: 'progress', time: '09:42 ص', deliver: 'توصيل', date: '2026-10-24', address: 'حي النرجس، شارع الأمير سلطان',
-    items: [mk('كرواسون','جبنة شيدر',['زعتر'],'وسط',2), mk('كيش','سبانخ وجبنة',[],'وسط',1), mk('كب كيك','شوكولاتة',[],'وسط',6,'تغليف هدايا')],
-    discount: 0, fee: 15, paid: 100, method: 'بطاقة', notes: 'العميلة تفضل التسليم بعد العصر' },
-  { id: 1046, customer: 'فهد القحطاني', phone: '0552345678', status: 'ready', time: '09:15 ص', deliver: 'استلام', date: '2026-10-23', address: '',
-    items: [mk('تشيز كيك','سادة',[],'كبير',1)],
-    discount: 0, fee: 0, paid: 128, method: 'بطاقة', notes: '' },
-  { id: 1045, customer: 'منى السالم', phone: '0543456789', status: 'new', time: '09:02 ص', deliver: 'استلام', date: '2026-10-24', address: '',
-    items: [mk('باغيت إيطالي','دجاج مشوي',['صلصة ثوم','زيتون'],'وسط',3), mk('توست','بيض وجبنة',[],'وسط',4)],
-    discount: 10, fee: 0, paid: 0, method: 'نقدي', notes: '' },
-  { id: 1048, customer: 'خالد الدوسري', phone: '0506789012', status: 'new', time: '09:50 ص', deliver: 'توصيل', date: '2026-10-23', address: 'حي الياسمين، مبنى 12',
-    items: [mk('تورتة','شوكولاتة',[],'عائلي',1,'كتابة: عيد ميلاد سعيد'), mk('كب كيك','سادة',[],'صغير',12)],
-    discount: 20, fee: 15, paid: 0, method: 'تحويل بنكي', notes: 'الاتصال قبل الوصول' },
-  { id: 1044, customer: 'عبدالله النجار', phone: '0584567890', status: 'done', time: '08:30 ص', deliver: 'استلام', date: '2026-10-23', address: '',
-    items: [mk('تورتة','شوكولاتة',[],'وسط',1)],
-    discount: 0, fee: 0, paid: 126, method: 'نقدي', notes: '' },
-  { id: 1043, customer: 'ريم الزهراني', phone: '0565678901', status: 'done', time: '08:10 ص', deliver: 'توصيل', date: '2026-10-23', address: 'حي الروضة',
-    items: [mk('كيش','سبانخ وجبنة',[],'وسط',2), mk('كرواسون','جبنة موزاريلا',['سمسم'],'وسط',3)],
-    discount: 0, fee: 15, paid: 118, method: 'بطاقة', notes: '' },
-  { id: 1042, customer: 'نورة الحربي', phone: '0537890123', status: 'cancel', time: '07:55 ص', deliver: 'استلام', date: '2026-10-23', address: '',
-    items: [mk('توست','بيض وجبنة',[],'وسط',5)],
-    discount: 0, fee: 0, paid: 0, method: 'نقدي', notes: 'ألغاه العميل' }
-];
-
-// الطلبات تُقرأ من شيت المبيعات (سطر لكل صنف). البيانات التجريبية أعلاه تظهر فقط لو الموقع غير مربوط بالشيت
+// الطلبات تُقرأ من شيت المبيعات (سطر لكل صنف) بمجرد ربط الموقع؛ وتفضل فاضية (بيانات فعلية فقط) قبل الربط
+let orders = [];
 const oid = o => esc(JSON.stringify(o.id));
 function totals(o) {
   const sub = o.items.reduce((s, i) => s + i.unit * i.qty, 0);
@@ -3555,8 +3743,10 @@ function nav(page) {
   const navEl = document.querySelector('.nav-item[data-tab="' + page + '"]');
   if (navEl) navEl.classList.add('active');
   document.querySelectorAll('.bn-item[data-tab="' + page + '"], .bn-more-item[data-tab="' + page + '"]').forEach(n => n.classList.add('active'));
-  $('topbar-title').textContent = titles[page] || '';
-  if (page === 'add-order') { goStep(1); if (!$('c-date').value) $('c-date').value = todayStr(); fillCustomerSelect(); buildBuilder(); }
+  const ttEl = $('topbar-title');
+  ttEl.textContent = titles[page] || '';
+  ttEl.classList.remove('tt-anim'); void ttEl.offsetWidth; ttEl.classList.add('tt-anim');
+  if (page === 'add-order') { goStep(1); if (!$('c-date').value) $('c-date').value = todayStr(); fillCustomerSelect(); fillOrderSources(); fillOrderAreas(); buildBuilder(); }
   if (page === 'settings') onSettingsOpen();
   if (page === 'items') renderItems();
   if (page === 'catalog') renderCatalog();
@@ -3827,8 +4017,15 @@ function rpDebt() {
 function rpCustOrders(name) { ofClear(); OF.cust = name; $('of-cust').value = name; mode = 'list'; statusFilter = 'all'; document.querySelectorAll('#o-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === 'list')); nav('orders'); renderOrders(); }
 
 /* ───────── التحصيلات: تحصيل عميل واحد على أكتر من فاتورة دفعة واحدة ───────── */
-const CL = { pick: '' };
+const CL = { pick: '', mode: 'add' };
 let CL_LIST = [], CL_ROWS = [];
+const CLV = { q: '' };
+let CLV_ROWS = [], clvDelPending = null;
+function clSetMode(m) {
+  CL.mode = m;
+  document.querySelectorAll('#cl-mode .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === m));
+  renderCollections();
+}
 function clDebtors() {
   const m = new Map();
   orders.filter(o => o.status !== 'cancel').forEach(o => {
@@ -3870,7 +4067,9 @@ function clSetPick(name) {
 function clClear() { CL.pick = ''; CL_ROWS = []; renderCollections(); setTimeout(() => { if ($('cl-search')) $('cl-search').focus(); }, 30); }
 function clRecalc() {
   let sum = 0; CL_ROWS.forEach((r, i) => { const el = $('cl-amt-' + i); sum += el ? (Number(el.value) || 0) : 0; });
+  sum = Math.round(sum * 100) / 100;
   $('cl-alloc').textContent = money(sum);
+  $('cl-amount').value = sum ? sum : '';
 }
 function clClampRow(i) {
   const el = $('cl-amt-' + i), r = CL_ROWS[i]; if (!el || !r) return;
@@ -3891,6 +4090,11 @@ function clAutoDistribute() {
 function clPayAllRemaining() { $('cl-amount').value = Math.round(CL_ROWS.reduce((s, r) => s + r.rem, 0) * 100) / 100; clAutoDistribute(); }
 function clClearAmts() { CL_ROWS.forEach((r, i) => { const el = $('cl-amt-' + i); if (el) el.value = ''; }); $('cl-amount').value = ''; clRecalc(); }
 function renderCollections() {
+  const addWrap = $('cl-add-wrap'), viewWrap = $('cl-view-wrap');
+  if (!addWrap) return; // الصفحة لسه مش مبنية
+  addWrap.hidden = CL.mode !== 'add';
+  viewWrap.hidden = CL.mode !== 'view';
+  if (CL.mode === 'view') { renderCollectionsView(); return; }
   const row = $('cl-search-row'), card = $('cl-card'), work = $('cl-work'), debWrap = $('cl-debtors-wrap');
   if (!row) return; // الصفحة لسه مش مبنية
   if (!O_LIVE()) {
@@ -3939,6 +4143,38 @@ async function clSave() {
     clSetPick(name);
   } catch (e) { err.textContent = gsError(e); }
   finally { $('cl-save').disabled = false; }
+}
+
+// عرض كل التحصيلات القديمة + إمكانية حذف أي دفعة
+function renderCollectionsView() {
+  const body = $('cl-view-body'); if (!body) return;
+  if (!catReady('payments')) { body.innerHTML = cgEmpty('💵', 'شيت المدفوعات غير مربوط', 'اربط شيت Payments من إعدادات الأدمن ثم «حفظ للجميع».'); return; }
+  const q = nk((CLV.q || '').trim());
+  const rows = payRows().filter(p => !q || nk(p.client + ' ' + p.inv + ' ' + p.code).includes(q))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0) || b.code.localeCompare(a.code));
+  CLV_ROWS = rows;
+  body.innerHTML = rows.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>رقم الدفعة</th><th>التاريخ</th><th>الفاتورة</th><th>العميل</th><th>طريقة الدفع</th><th>المبلغ</th><th>الموظف</th><th>إجراء</th></tr></thead><tbody>' +
+    rows.map((p, i) => '<tr><td dir="ltr">' + esc(p.code) + '</td><td>' + fmtDate(p.date) + '</td><td><a href="#" onclick="nav(\'orders\');openOrder(' + oid({ id: p.inv }) + ');return false" dir="ltr">' + esc(p.inv) + '</a></td><td>' + esc(p.client) + '</td><td>' + esc(p.method) + '</td><td><b>' + money(p.amount) + '</b></td><td>' + esc(p.user) + '</td><td><div class="actions-cell">' + (can('collections', 'd') ? '<button type="button" class="action-btn danger" onclick="clvDelClick(' + i + ',this)" title="حذف" aria-label="حذف">🗑</button>' : '') + '</div></td></tr>').join('') +
+    '</tbody></table></div></div>' : cgEmpty('💵', q ? 'لا نتائج مطابقة' : 'لا توجد تحصيلات بعد', q ? 'جرّب كلمة بحث أخرى' : 'التحصيلات اللي بتسجلها هتظهر هنا.');
+}
+function clvDelClick(i, b) {
+  const id = 'clv:' + i;
+  if (clvDelPending !== id) {
+    clvDelPending = id; b.textContent = 'تأكيد؟'; b.classList.add('confirm');
+    setTimeout(() => { if (clvDelPending === id) { clvDelPending = null; if (b.isConnected) { b.textContent = '🗑'; b.classList.remove('confirm'); } } }, 3000);
+    return;
+  }
+  clvDelPending = null; clvDelete(i);
+}
+async function clvDelete(i) {
+  if (!can('collections', 'd')) { toast('ليس لديك صلاحية حذف التحصيلات'); return; }
+  const row = CLV_ROWS[i]; if (!row) return;
+  if (!needWrite(8)) return;
+  try {
+    await delRow('payments', { code: row.code });
+    toast('تم حذف الدفعة ' + row.code);
+    await reloadData(true);
+  } catch (e) { toast(gsError(e)); }
 }
 
 // 3) التحصيل: المدفوعات حسب طريقة الدفع واليوم
@@ -4044,7 +4280,7 @@ function openOrder(id) {
     row('المتبقي', money(t.rem)) + '</div>' +
     (o.pays && o.pays.length ? '<div class="pay-list"><div class="pay-h">المدفوعات</div>' + o.pays.map(p => '<div class="pay-row"><span dir="ltr">' + esc(p.code) + '</span><span>' + esc(fmtDate(p.date)) + '</span><span>' + esc(p.method || '—') + '</span><strong>' + money(p.amount) + '</strong></div>').join('') + '</div>' : '') +
     (O_LIVE() && tableOk('payments') && can('orders', 'e') && o.status !== 'cancel' ? '<div class="pay-form" id="pay-form" hidden></div>' : '') +
-    '<div class="m-note">' + (o.deliver === 'توصيل' ? '🚚 توصيل إلى ' + esc(o.address || 'عنوان غير مسجل') : '🏪 استلام من الفرع') + ' · ' + fmtDate(o.date) + (o.notes ? '<br>📝 ' + esc(o.notes) : '') + '</div></div>' +
+    '<div class="m-note">' + (o.deliver === 'توصيل' ? '🚚 توصيل إلى ' + esc(o.address || 'عنوان غير مسجل') + (o.area ? ' (' + esc(o.area) + ')' : '') : '🏪 استلام من الفرع') + ' · ' + fmtDate(o.date) + (o.orderSource ? ' · 🔖 ' + esc(o.orderSource) : '') + (o.invRef ? '<br>📄 مرجع الفاتورة: ' + esc(o.invRef) : '') + (o.notes ? '<br>📝 ' + esc(o.notes) : '') + '</div></div>' +
     '<div class="m-foot">' +
     (NEXT[o.status] && can('orders', 'e') ? '<button class="btn btn-primary" onclick="advance(' + oid(o) + ')">' + NEXT_LABEL[o.status] + '</button>' : '') +
     (ST_PREV[o.status] && can('orders', 'e') ? '<button class="btn btn-secondary" onclick="stepBack(' + oid(o) + ')">↩ ' + PREV_LABEL[o.status] + '</button>' : '') +
@@ -4136,9 +4372,10 @@ function setPick(row) {
   $('c-search').value = '';
   cpHide();
   $('c-address').value = fullAddr(row);
+  fillOrderAreas(S_(row.area));
   renderPick();
 }
-function clearPick() { PICK = null; renderPick(); setTimeout(() => $('c-search').focus(), 30); }
+function clearPick() { PICK = null; fillOrderAreas(''); renderPick(); setTimeout(() => $('c-search').focus(), 30); }
 function renderPick() {
   const card = $('c-card'), row = $('c-search-row');
   if (!card) return;
@@ -4162,7 +4399,9 @@ function setDeliver(btn) {
   deliver = btn.dataset.v;
   document.querySelectorAll('#c-deliver .seg-btn').forEach(b => b.classList.toggle('active', b === btn));
   $('addr-group').hidden = deliver !== 'توصيل';
+  $('area-group').hidden = deliver !== 'توصيل';
   if (deliver === 'توصيل' && PICK && !$('c-address').value.trim()) $('c-address').value = fullAddr(PICK);
+  if (deliver === 'توصيل' && PICK && !$('c-area').value) fillOrderAreas(S_(PICK.area));
 }
 function currentCustomer() {
   return PICK ? { name: S_(PICK.name), phone: fixPhone(PICK.phone), isNew: false } : null;
@@ -4170,7 +4409,9 @@ function currentCustomer() {
 function toStep2() {
   if (!PICK) { toast('اختر العميل من القائمة، أو أضفه بزر «عميل جديد»'); $('c-search').focus(); return; }
   if (!$('c-date').value) { toast('اختر تاريخ الفاتورة / التسليم'); $('c-date').focus(); return; }
+  if (!$('c-source').value && $('c-source').options.length > 1) { toast('اختر مصدر الطلب'); $('c-source').focus(); return; }
   if (deliver === 'توصيل' && !$('c-address').value.trim()) { toast('أدخل عنوان التوصيل'); return; }
+  if (deliver === 'توصيل' && !$('c-area').value && $('c-area').options.length > 1) { toast('اختر المنطقة'); $('c-area').focus(); return; }
   goStep(2);
   buildBuilder();
 }
@@ -4421,6 +4662,20 @@ function fillPayMethods() {
   sel.innerHTML = (items.length ? '<option value="">— اختر طريقة الدفع (لو فيه مدفوع) —</option>' : '<option value="">لا توجد طرق دفع</option>') + items.map(p => '<option' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>').join('');
   $('p-method-hint').textContent = !list ? (CFG.scriptUrl ? 'طرق الدفع تُقرأ من عمود «Payment Method» في شيت Data. أضف العمود واربطه من إعدادات الأدمن.' : '') : !list.length ? 'أضف طرق الدفع من تاب التصنيفات والخيارات ← طرق الدفع.' : '';
 }
+// مصادر الطلب من شيت Data (عمود مصدر الطلب)
+function orderSources() {
+  if (!catReady('data') || !MAP.data.cols.orderSource) return null;
+  const seen = new Set(), out = [];
+  DB.data.forEach(r => { const p = S_(r.orderSource); if (p && !seen.has(nk(p))) { seen.add(nk(p)); out.push(p); } });
+  return out;
+}
+function fillOrderSources() {
+  const sel = $('c-source'); if (!sel) return;
+  const cur = sel.value, list0 = orderSources(), list = list0 || [];
+  sel.innerHTML = '<option value="">— اختر —</option>' + list.map(p => '<option' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>').join('');
+  const hint = $('c-source-hint');
+  if (hint) hint.textContent = !list0 ? (CFG.scriptUrl ? 'مصادر الطلب تُقرأ من عمود «Order Source» في شيت Data. أضف العمود واربطه من إعدادات الأدمن.' : '') : !list0.length ? 'أضف مصادر الطلب من تاب التصنيفات والخيارات ← مصادر الطلب.' : '';
+}
 function renderConfirm() {
   fillPayMethods();
   const c = currentCustomer();
@@ -4485,7 +4740,7 @@ async function submitOrder() {
   const now = new Date(), p2 = x => String(x).padStart(2, '0');
   const stamp = ymd(now) + ' ' + p2(now.getHours()) + ':' + p2(now.getMinutes()) + ':' + p2(now.getSeconds());
   const userName = AUTH.user ? (AUTH.user.name || AUTH.user.username || '') : '';
-  const orderNote = $('c-notes').value.trim(), addr = deliver === 'توصيل' ? $('c-address').value.trim() : '';
+  const orderNote = $('c-notes').value.trim(), addr = deliver === 'توصيل' ? $('c-address').value.trim() : '', area = deliver === 'توصيل' ? $('c-area').value : '';
   // الخصم والتوصيل على أول سطر فجمع أي عمود في الشيت = قيمة الفاتورة. المدفوعات تُسجل في شيت Payments
   let payLeft = sc.paid ? n.paid : 0;
   const optRows = !!(sc.line && sc.lineType);   // صف للصنف وصف لكل اختيار
@@ -4495,9 +4750,12 @@ async function submitOrder() {
     const base = sc.extra ? i.unit - optSum : i.unit;
     const total = base * i.qty;
     const disc = idx === 0 ? n.disc : 0;
-    const extra = sc.extra ? optSum * i.qty + (idx === 0 && !sc.fee ? n.fee : 0) : 0;
+    const optExtra = sc.extra ? optSum * i.qty : 0;   // اختيارات الصنف فقط، من غير التوصيل
     const fee = idx === 0 ? n.fee : 0;
-    const net = total - disc + extra + (sc.extra || !sc.fee ? 0 : fee);
+    const feeFoldedIntoExtra = sc.extra && !sc.fee;   // مفيش عمود Delivery منفصل، فالتوصيل بيتسجل جوه الإضافة زي الأول
+    const extra = optExtra + (feeFoldedIntoExtra ? fee : 0);
+    const netInvoice = total - disc + optExtra;       // اجمالي الفاتورة من غير التوصيل
+    const net = netInvoice + fee;                     // الصافي الكلي = اجمالي الفاتورة + التوصيل
     const lastLine = idx === cart.length - 1;
     const paid = lastLine ? payLeft : Math.min(payLeft, Math.max(0, net));
     payLeft -= paid;
@@ -4507,29 +4765,33 @@ async function submitOrder() {
     if (idx === 0 && addr && !sc.address) noteParts.push('توصيل: ' + addr);
     if (idx === 0 && orderNote) noteParts.push('ملاحظة الطلب: ' + orderNote);
     const v = { date: stamp, deliveryDate: $('c-date').value, orderId: '', client: c.name, invType: 'Order', deliveryType: deliver, phone: c.phone,
-      itemCode: i.code || '', itemName: i.name, breadType: [i.grain, i.bread].filter(Boolean).join('، '), qty: i.qty, unitPrice: base, lineTotal: total, discount: disc, extra, net, paid, credit: net - paid,
+      itemCode: i.code || '', itemName: i.name, breadType: [i.grain, i.bread].filter(Boolean).join('، '), qty: i.qty, unitPrice: base, lineTotal: total, discount: disc, extra, netInvoice, net, paid, credit: net - paid,
       method: $('p-method').value, notes: noteParts.join(' — '), user: userName, status: STATUS.new.label,
-      options: optTxt, itemNote: i.note, fee, address: addr };
+      options: optTxt, itemNote: i.note, fee, address: addr, area, invRef: $('c-invref').value.trim(), orderSource: $('c-source').value };
     const r = {}; Object.keys(v).forEach(k => { if (sc[k] && k !== 'orderId') r[sc[k]] = v[k]; });
     return r;
   });
   if (optRows) {
-    const base0 = { date: stamp, deliveryDate: $('c-date').value, client: c.name, invType: 'Order', deliveryType: deliver, phone: c.phone, user: userName, status: STATUS.new.label, address: addr };
+    const base0 = { date: stamp, deliveryDate: $('c-date').value, client: c.name, invType: 'Order', deliveryType: deliver, phone: c.phone, user: userName, status: STATUS.new.label, address: addr, area, invRef: $('c-invref').value.trim(), orderSource: $('c-source').value };
     const put = v => { const r = {}; Object.keys(v).forEach(k => { if (sc[k] && k !== 'orderId') r[sc[k]] = v[k]; }); rowsOut.push(r); };
     cart.forEach((i, idx) => {
       const optSum = (i.opts || []).reduce((s, o) => s + o.price * (o.qty || 1), 0) / (i.qty || 1);
       const base = i.unit - optSum, total = base * i.qty;
       const disc = idx === 0 ? n.disc : 0, fee = idx === 0 ? n.fee : 0;
+      const feeFoldedIntoExtra = sc.extra && !sc.fee;   // مفيش عمود Delivery منفصل، فالتوصيل بيتسجل جوه الإضافة زي الأول
+      const itemExtra = feeFoldedIntoExtra ? fee : 0;
+      const netInvoiceItem = total - disc;              // اجمالي الفاتورة من غير التوصيل
+      const netItem = netInvoiceItem + fee;              // الصافي الكلي = اجمالي الفاتورة + التوصيل
       const noteParts = [];
       if (i.note) noteParts.push(i.note);
       if (idx === 0 && addr && !sc.address) noteParts.push('توصيل: ' + addr);
       if (idx === 0 && orderNote) noteParts.push('ملاحظة الطلب: ' + orderNote);
       put(Object.assign({}, base0, { line: idx + 1, lineType: 'Item', itemCode: i.code || '', itemName: i.name, breadType: i.grain || '', qty: i.qty, unitPrice: base, lineTotal: total,
-        discount: disc, extra: sc.fee ? 0 : fee, fee, net: total - disc + fee, notes: noteParts.join(' — '), itemNote: i.note }));
+        discount: disc, extra: itemExtra, fee, netInvoice: netInvoiceItem, net: netItem, notes: noteParts.join(' — '), itemNote: i.note }));
       (i.opts || []).forEach(o => {
         const q = o.qty || 1, t = o.price * q;
         put(Object.assign({}, base0, { line: idx + 1, lineType: 'Option', itemName: o.name, breadType: o.bread || '', qty: q, unitPrice: o.price, lineTotal: t,
-          discount: 0, extra: 0, fee: 0, net: t, notes: o.group || '' }));
+          discount: 0, extra: 0, fee: 0, netInvoice: t, net: t, notes: o.group || '' }));
       });
     });
   }
@@ -4555,10 +4817,12 @@ async function submitOrder() {
 }
 function resetWizard() {
   cart = []; B.code = ''; B.sel = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
-  ['c-search', 'c-address', 'c-notes', 'b-note', 'b-q'].forEach(id => $(id).value = '');
+  ['c-search', 'c-address', 'c-notes', 'b-note', 'b-q', 'c-invref'].forEach(id => $(id).value = '');
   renderPick();
   $('p-discount').value = 0; $('p-paid').value = 0; $('c-date').value = todayStr();
+  fillOrderAreas('');
   setDeliver(document.querySelector('#c-deliver .seg-btn'));
+  fillOrderSources();
   buildBuilder(); renderCart();
 }
 
@@ -4669,7 +4933,8 @@ const TABLES = {
     { k: 'area', l: 'المنطقة', req: 1, a: ['area', 'areaname', 'areas', 'district', 'zone', 'المنطقة', 'منطقة', 'المناطق'] },
     { k: 'category', l: 'تصنيفات الأصناف (قائمة مستقلة في نفس الشيت)', a: ['itemcategory', 'itemcategories', 'category', 'categories', 'التصنيف', 'التصنيفات'] },
     { k: 'breadType', l: 'أنواع الحبة (قائمة مستقلة في نفس الشيت)', a: ['graintype', 'graintypes', 'grain', 'breadtype', 'breadtypes', 'نوع الحبة', 'انواع الحبة'] },
-    { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] }
+    { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] },
+    { k: 'orderSource', l: 'مصادر الطلب (قائمة مستقلة في نفس الشيت)', a: ['ordersource', 'ordersources', 'source', 'leadsource', 'مصدر الطلب', 'مصادر الطلب'] }
   ] },
   sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة. الخصم والإضافة والمدفوع مرة واحدة فقط (موزعة على الأسطر) فيصح جمع الأعمدة', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
     { k: 'date', l: 'تاريخ ووقت تسجيل الحركة (Action Date)', a: ['actiondate', 'createdat', 'timestamp', 'datetime', 'تاريخ الحركة'] },
@@ -4688,8 +4953,9 @@ const TABLES = {
     { k: 'unitPrice', l: 'سعر الوحدة', req: 1, a: ['unitprice', 'price', 'سعر الوحدة', 'السعر'] },
     { k: 'lineTotal', l: 'الإجمالي (السعر × الكمية)', a: ['linetotal', 'total', 'amount', 'الإجمالي', 'الاجمالي'] },
     { k: 'discount', l: 'الخصم', a: ['discount', 'الخصم'] },
-    { k: 'extra', l: 'الإضافة (الاختيارات + التوصيل)', a: ['extra', 'extras', 'addition', 'additions', 'الإضافة', 'الاضافة'] },
-    { k: 'net', l: 'الصافي = الإجمالي − الخصم + الإضافة (Net total)', a: ['nettotal', 'net', 'netamount', 'الصافي'] },
+    { k: 'extra', l: 'الإضافة (اختيارات الصنف فقط)', a: ['extra', 'extras', 'addition', 'additions', 'الإضافة', 'الاضافة'] },
+    { k: 'netInvoice', l: 'اجمالي الفاتورة من غير التوصيل (Net invoice)', a: ['netinvoice', 'invoicetotal', 'invoicenet', 'اجمالي الفاتورة', 'الصافي قبل التوصيل'] },
+    { k: 'net', l: 'الصافي الكلي = اجمالي الفاتورة + التوصيل (Net total)', a: ['nettotal', 'net', 'netamount', 'الصافي'] },
     { k: 'paid', l: 'المدفوع', a: ['paid', 'paidamount', 'المدفوع'] },
     { k: 'credit', l: 'المتبقي (Credit)', a: ['credit', 'remaining', 'balance', 'due', 'المتبقي', 'الآجل'] },
     { k: 'method', l: 'طريقة الدفع', a: ['paymentmethod', 'method', 'payment', 'طريقة الدفع'] },
@@ -4699,8 +4965,11 @@ const TABLES = {
     { k: 'status', l: 'حالة الطلب (جديد / جاري / جاهز / مسلّم / ملغي)', a: ['status', 'orderstatus', 'state', 'الحالة', 'حالة الطلب'] },
     { k: 'options', l: 'الاختيارات (عمود منفصل، اختياري)', a: ['options', 'الاختيارات'] },
     { k: 'itemNote', l: 'ملاحظة الصنف (عمود منفصل، اختياري)', a: ['itemnote', 'linenote', 'ملاحظة الصنف'] },
-    { k: 'fee', l: 'رسوم التوصيل (عمود منفصل، اختياري)', a: ['deliveryfee', 'رسوم التوصيل'] },
-    { k: 'address', l: 'عنوان التوصيل (اختياري)', a: ['address', 'العنوان'] }
+    { k: 'fee', l: 'قيمة التوصيل (Delivery، عمود منفصل، اختياري)', a: ['deliveryfee', 'delivery', 'رسوم التوصيل', 'التوصيل'] },
+    { k: 'address', l: 'عنوان التوصيل (اختياري)', a: ['address', 'العنوان'] },
+    { k: 'area', l: 'منطقة التوصيل (اختياري)', a: ['area', 'areaname', 'clientarea', 'deliveryarea', 'zone', 'المنطقة', 'منطقة التوصيل'] },
+    { k: 'invRef', l: 'مرجع الفاتورة (اختياري) — INV Reference', a: ['invreference', 'invref', 'reference', 'ref', 'مرجع الفاتورة', 'المرجع'] },
+    { k: 'orderSource', l: 'مصدر الطلب (إجباري في الموقع) — Order Source', a: ['ordersource', 'source', 'مصدر الطلب'] }
   ] },
   payments: { label: 'المدفوعات', hint: 'كل دفعة صف مستقل مربوط برقم الفاتورة (العربون وأي دفعات لاحقة)', sheetAlias: ['payments', 'payment', 'المدفوعات'], fields: [
     { k: 'code', l: 'رقم الدفعة (Payment Num)', req: 1, a: ['paymentnum', 'paymentno', 'paymentcode', 'paynum', 'رقم الدفعة'] },
@@ -4726,6 +4995,13 @@ const TABLES = {
     { k: 'active', l: 'مفعّل (اختياري)', a: ['active', 'enabled', 'status', 'مفعل'] },
     { k: 'lastLogin', l: 'آخر دخول (اختياري)', a: ['lastlogin', 'آخر دخول'] },
     { k: 'mobileLayout', l: 'شكل الفون (اختياري)', a: ['mobilelayout', 'mobileview', 'mobile', 'شكل الفون', 'الفون'] }
+  ] },
+  log: { label: 'سجل الحركات', hint: 'الموقع بيكتب فيه بنفسه (دخول/خروج، وأي إضافة/تعديل/حذف في أي شيت)، مفيش داعي تدخل بيانات فيه يدويًا — سيبه فاضي وهو هيتملي لوحده', sheetAlias: ['log', 'activitylog', 'السجل', 'سجل الحركات'], fields: [
+    { k: 'date', l: 'التاريخ والوقت', req: 1, a: ['date', 'datetime', 'timestamp', 'التاريخ', 'الوقت'] },
+    { k: 'user', l: 'المستخدم', req: 1, a: ['user', 'username', 'المستخدم'] },
+    { k: 'action', l: 'الحركة', req: 1, a: ['action', 'type', 'الحركة', 'النوع'] },
+    { k: 'table', l: 'الجدول / الشيت', req: 1, a: ['table', 'sheet', 'الجدول', 'الشيت'] },
+    { k: 'details', l: 'التفاصيل', req: 1, a: ['details', 'detail', 'notes', 'التفاصيل'] }
   ] }
 };
 
@@ -4912,7 +5188,7 @@ function autoMap(t, onlyEmpty, only) {
   });
 }
 // ربط الحقول والجداول المضافة حديثاً فقط، دون المساس بما ربطه الأدمن سابقاً
-const NEW_MAP = { items: ['icon', 'grainType'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area', 'payment', 'breadType', 'category'], groupOptions: ['scope'], payments: ['code', 'orderId', 'amount', 'date', 'payDate', 'client', 'method', 'note', 'user', 'userEdit'], options: ['breadType', 'minQty', 'maxQty'], sales: ['line', 'lineType', 'breadType', 'date', 'deliveryDate', 'invType', 'deliveryType', 'extra', 'net', 'credit', 'userEdit', 'status', 'method', 'notes', 'user'] };
+const NEW_MAP = { items: ['icon', 'grainType'], clients: ['phone', 'address', 'city', 'area'], data: ['city', 'area', 'payment', 'breadType', 'category', 'orderSource'], groupOptions: ['scope'], payments: ['code', 'orderId', 'amount', 'date', 'payDate', 'client', 'method', 'note', 'user', 'userEdit'], options: ['breadType', 'minQty', 'maxQty'], sales: ['line', 'lineType', 'breadType', 'date', 'deliveryDate', 'invType', 'deliveryType', 'extra', 'net', 'netInvoice', 'fee', 'credit', 'userEdit', 'status', 'method', 'notes', 'user', 'address', 'area', 'invRef', 'orderSource'], log: ['date', 'user', 'action', 'table', 'details'] };
 function autoMapNew() {
   if (!META) return [];
   const out0 = [];
@@ -5086,7 +5362,8 @@ function salesOrders() {
       const dt = S_(r.deliveryType);
       o = { id: /^\d+$/.test(key) ? Number(key) : key, rawId: r.orderId, raw: [], customer: S_(r.client) || '—', phone: fixPhone(r.phone), status: stKey(r.status), time: timeStr(r.date),
         deliver: /توصيل|deliver/i.test(dt) ? 'توصيل' : 'استلام', date: dayStr(r.deliveryDate) || dayStr(r.date), address: S_(r.address),
-        items: [], discount: 0, fee: 0, paid: 0, method: S_(r.method), notes: '', feeLabel: sc.extra && !sc.lineType ? 'الإضافات' : 'التوصيل' };
+        items: [], discount: 0, fee: 0, paid: 0, method: S_(r.method), notes: '', feeLabel: sc.extra && !sc.lineType ? 'الإضافات' : 'التوصيل',
+        invRef: S_(r.invRef), orderSource: S_(r.orderSource), area: S_(r.area) };
       map.set(key, o);
     }
     o.raw.push(r);
@@ -5152,6 +5429,8 @@ async function loadAll() {
   renderCustomers();
   fillCustomerSelect();
   fillPayMethods();
+  fillOrderSources();
+  fillOrderAreas();
   if (DB.sales && tableOk('sales')) orders = salesOrders();
   else if (CFG.scriptUrl) orders = [];
   renderOrders();
@@ -5246,10 +5525,10 @@ function initGS() {
 /* ───────── Auth + permissions ───────── */
 const LS_SESS = 'bk_sess';
 let CUR = 'dashboard';
-const TAB_KEYS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin'];
-const TAB_LABELS = { dashboard: 'الرئيسية', 'add-order': 'إضافة طلب', orders: 'الطلبات', collections: 'التحصيلات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات (إدارة المستخدمين)', admin: 'إعدادات الأدمن' };
+const TAB_KEYS = ['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'catalog', 'reports', 'settings', 'admin', 'log'];
+const TAB_LABELS = { dashboard: 'الرئيسية', 'add-order': 'إضافة طلب', orders: 'الطلبات', collections: 'التحصيلات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير', settings: 'الإعدادات (إدارة المستخدمين)', admin: 'إعدادات الأدمن', log: 'سجل الحركات' };
 /* الأحرف المنطبقة على كل تاب: v فتح، a إضافة، e تعديل، d حذف */
-const TAB_LETTERS = { dashboard: 'v', 'add-order': 'va', orders: 'ved', collections: 'va', customers: 'vaed', items: 'vaed', catalog: 'vaed', reports: 'v', settings: 'vaed', admin: 've' };
+const TAB_LETTERS = { dashboard: 'v', 'add-order': 'va', orders: 'ved', collections: 'vad', customers: 'vaed', items: 'vaed', catalog: 'vaed', reports: 'v', settings: 'vaed', admin: 've', log: 'v' };
 const LETTER_LABEL = { v: 'فتح', a: 'إضافة', e: 'تعديل', d: 'حذف' };
 const PRESETS = {
   manager: Object.fromEntries(TAB_KEYS.map(t => [t, TAB_LETTERS[t]])),
@@ -5310,10 +5589,19 @@ function setLoginMode(mode) {
   ['lg-user', 'lg-pass'].forEach(i => { $(i).parentElement.hidden = !form; });
   $('lg-pass2-wrap').hidden = mode !== 'setup';
   $('lg-btn').hidden = !form;
-  $('lg-btn').textContent = mode === 'setup' ? 'إنشاء الحساب' : 'دخول';
+  setLoginBtnState('idle', mode === 'setup' ? 'إنشاء الحساب' : 'دخول');
   $('lg-pass').autocomplete = mode === 'setup' ? 'new-password' : 'current-password';
   const alt = { retry: 'إعادة المحاولة' }[mode];
   $('lg-alt').hidden = !alt; $('lg-alt').textContent = alt || '';
+}
+function setLoginBtnState(state, idleLabel) {
+  const b = $('lg-btn'), label = $('lg-btn-label');
+  if (!b || !label) return;
+  b.classList.remove('loading', 'success');
+  if (state === 'loading') { b.classList.add('loading'); label.innerHTML = 'جاري الدخول…<span class="btn-spinner"></span>'; }
+  else if (state === 'success') { b.classList.add('success'); label.textContent = '✓ تم'; }
+  else { label.textContent = idleLabel || label.dataset.idle || 'دخول'; }
+  if (state === 'idle') label.dataset.idle = label.textContent;
 }
 function loginAlt() {
   if (LG_MODE === 'retry') { startup(); return; }
@@ -5336,26 +5624,32 @@ async function doLogin(ev) {
   ev.preventDefault();
   const username = $('lg-user').value.trim(), password = $('lg-pass').value;
   if (!username || !password) { $('lg-err').textContent = 'أدخل اسم المستخدم وكلمة المرور'; return; }
-  $('lg-btn').disabled = true; $('lg-err').textContent = '';
+  $('lg-btn').disabled = true; $('lg-err').textContent = ''; setLoginBtnState('loading');
   try {
     const la = LOCAL_ADMINS.find(a => same(a.username, username) && a.password === normDigits(password.trim()));
     if (la) { await localAdminLogin(la); return; }
     if (LG_MODE === 'setup') {
       if (!/^[A-Za-z0-9_.@\-؀-ۿ]{2,40}$/.test(username)) throw new Error('bad username');
       if (password.length < 6) throw new Error('weak password');
-      if (password !== $('lg-pass2').value) { $('lg-err').textContent = 'كلمتا المرور غير متطابقتين'; return; }
+      if (password !== $('lg-pass2').value) { setLoginBtnState('idle'); $('lg-err').textContent = 'كلمتا المرور غير متطابقتين'; return; }
       await gsCall('saveUser', { isNew: true, user: { username, password, permissions: {} } });
       setLoginMode('login');
     }
     const r = await gsCall('login', { username, password });
     AUTH.token = r.token; AUTH.user = r.user; AUTH.secured = true;
     lsSet(LS_SESS, r.token);
+    await loginSuccessFlash();
     await afterAuth();
   } catch (e) {
+    setLoginBtnState('idle');
     $('lg-err').textContent = gsError(e);
   } finally {
     $('lg-btn').disabled = false;
   }
+}
+async function loginSuccessFlash() {
+  setLoginBtnState('success');
+  await new Promise(res => setTimeout(res, 350));
 }
 // يتجاهل الأرقام العربية وحالة الحروف، ويقبل الكتابة وكيبورد عربي مفعّل بالخطأ
 const AR_KEYS = { 'ش': 'a', 'لا': 'b', 'ؤ': 'c', 'ي': 'd', 'ث': 'e', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ه': 'i', 'ت': 'j', 'ن': 'k', 'م': 'l', 'ة': 'm', 'ى': 'n', 'خ': 'o', 'ح': 'p', 'ض': 'q', 'ق': 'r', 'س': 's', 'ف': 't', 'ع': 'u', 'ر': 'v', 'ص': 'w', 'ء': 'x', 'غ': 'y', 'ئ': 'z' };
@@ -5391,6 +5685,7 @@ async function localAdminLogin(la) {
     perms: Object.fromEntries(TAB_KEYS.map(t => [t, TAB_LETTERS[t]])) };
   AUTH.secured = true; AUTH.token = '';
   await diagnoseLocal();
+  await loginSuccessFlash();
   await afterAuth();
 }
 async function retryLocal() {
@@ -5402,12 +5697,14 @@ async function retryLocal() {
 function sessionExpired() {
   if (!AUTH.secured) return;
   if (AUTH.user && AUTH.user.local && !AUTH.token) return;
+  stopAutoRefresh();
   AUTH.token = ''; AUTH.user = null; DB = null;
   lsDel(LS_SESS); lsDel(LS_CACHE);
   applyAuthUI();
   showLogin('انتهت الجلسة، سجّل الدخول من جديد');
 }
 async function doLogout() {
+  stopAutoRefresh();
   try { await gsCall('logout'); } catch (e) {}
   AUTH.token = ''; AUTH.user = null; DB = null;
   lsDel(LS_SESS); lsDel(LS_CACHE);
@@ -5427,6 +5724,7 @@ async function afterAuth() {
     catch (e) { if (!(e && e.message === 'auth')) setConn('err', 'فشل التحميل'); }
   }
   applyAuthUI();
+  startAutoRefresh();
 }
 
 async function startup() {
@@ -5461,19 +5759,52 @@ async function startup() {
 
 /* ───────── Settings: account, users, preferences ───────── */
 function setSec(sec) {
-  ['account', 'users', 'prefs'].forEach(s => { $('set-' + s).hidden = s !== sec; });
+  ['account', 'users', 'prefs', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
   document.querySelectorAll('#set-nav .sn-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
   if (sec === 'users') loadUsers();
+  if (sec === 'log') loadLog();
 }
 function onSettingsOpen() {
   const active = document.querySelector('#set-nav .sn-item.active').dataset.sec;
   if (active === 'users' && !can('settings', 'v')) { setSec('account'); return; }
+  if (active === 'log' && !can('log', 'v')) { setSec('account'); return; }
   if (active === 'users') loadUsers();
+  if (active === 'log') loadLog();
   const u = AUTH.user;
   $('acc-username').textContent = u ? u.username : '—';
   $('acc-name').textContent = u ? (u.name || '—') : '—';
   $('acc-pass-form').hidden = !u;
   $('acc-none').hidden = !!u;
+}
+
+let LOG_DATA = [], LOG_COLS = null;
+async function loadLog() {
+  const box = $('log-msg'); if (!box) return;
+  box.innerHTML = '';
+  if (!CFG.scriptUrl) { box.innerHTML = msg('warn', 'اربط الشيت أولاً من إعدادات الأدمن.'); LOG_DATA = []; renderLog(); return; }
+  try {
+    const r = await gsCall('readLog', { limit: 500 });
+    LOG_COLS = r.cols || null;
+    if (!r.mapped) {
+      LOG_DATA = [];
+      box.innerHTML = msg('warn', 'شيت السجل (Log) غير مربوط بعد. اربطه من إعدادات الأدمن عشان الحركات تبدأ تتسجل.');
+    } else {
+      LOG_DATA = r.rows || [];
+    }
+    renderLog();
+  } catch (e) {
+    box.innerHTML = msg('bad', esc(gsError(e)));
+  }
+}
+function renderLog() {
+  const tb = $('log-rows'); if (!tb) return;
+  const q = nk(($('log-search') && $('log-search').value) || '');
+  const c = LOG_COLS || {};
+  const rows = LOG_DATA.filter(o => !q || nk(Object.values(o).join(' ')).includes(q));
+  tb.innerHTML = rows.length
+    ? rows.map(o => '<tr>' + ['date', 'user', 'action', 'table', 'details'].map(k => '<td>' + esc(o[c[k]] ?? '') + '</td>').join('') + '</tr>').join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--text-3)">لا توجد حركات مسجّلة</td></tr>';
+  mobileLabelTables();
 }
 
 async function changeMyPassword(ev) {
@@ -5522,17 +5853,18 @@ function renderUsers() {
   const caps = userCaps();
   $('users-head').innerHTML = '<th>المستخدم</th>' + (caps.name ? '<th>الاسم</th>' : '') + '<th>التابات المسموحة</th>' + (caps.active ? '<th>الحالة</th>' : '') + (caps.last ? '<th>آخر دخول</th>' : '') + '<th>إجراء</th>';
   const cols = 3 + (caps.name ? 1 : 0) + (caps.active ? 1 : 0) + (caps.last ? 1 : 0);
-  $('users-rows').innerHTML = USERS.length ? USERS.map(u => {
+  const list = USERS.filter(u => !u.builtin);   // المستخدم المدمج في الكود (AA) له كل الصلاحيات دايمًا ولا يظهر في القائمة
+  $('users-rows').innerHTML = list.length ? list.map(u => {
     const n = TAB_KEYS.filter(t => u.perms[t]).length;
     const isMe = AUTH.user && AUTH.user.username.toLowerCase() === u.username.toLowerCase();
-    return '<tr><td><strong dir="ltr">' + esc(u.username) + '</strong>' + (isMe ? ' <span class="tag">أنت</span>' : '') + (u.builtin ? ' <span class="tag">مدمج في الكود</span>' : '') + '</td>' +
+    return '<tr><td><strong dir="ltr">' + esc(u.username) + '</strong>' + (isMe ? ' <span class="tag">أنت</span>' : '') + '</td>' +
       (caps.name ? '<td>' + esc(u.name || '—') + '</td>' : '') +
       '<td>' + n + ' من ' + TAB_KEYS.length + '</td>' +
       (caps.active ? '<td><span class="pill ' + (u.active ? 'pill-ready' : 'pill-done') + '">' + (u.active ? 'نشط' : 'معطّل') + '</span></td>' : '') +
       (caps.last ? '<td>' + esc(u.lastLogin || '—') + '</td>' : '') +
       '<td><div class="actions-cell">' +
-      (can('settings', 'e') && !u.builtin ? '<button class="action-btn" data-act="edit" data-u="' + esc(u.username) + '" title="تعديل" aria-label="تعديل">✏️</button>' : '') +
-      (can('settings', 'd') && !isMe && !u.builtin ? '<button class="action-btn danger" data-act="del" data-u="' + esc(u.username) + '" title="حذف" aria-label="حذف">🗑</button>' : '') +
+      (can('settings', 'e') ? '<button class="action-btn" data-act="edit" data-u="' + esc(u.username) + '" title="تعديل" aria-label="تعديل">✏️</button>' : '') +
+      (can('settings', 'd') && !isMe ? '<button class="action-btn danger" data-act="del" data-u="' + esc(u.username) + '" title="حذف" aria-label="حذف">🗑</button>' : '') +
       '</div></td></tr>';
   }).join('') : '<tr><td colspan="' + cols + '"><div class="empty-state" style="padding:30px"><div class="es-title">لا يوجد مستخدمون</div><div class="es-text">أضف أول مستخدم من الزر أعلاه</div></div></td></tr>';
 }
@@ -5769,8 +6101,6 @@ function openItemEditor(code) {
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-name">اسم الصنف <span class="req">*</span></label><input type="text" id="ie-name" autocomplete="off" value="' + esc(it ? it.name : '') + '"></div>' +
     (c.category ? (dataCats() ? '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><select id="ie-cat"><option value="">— اختر التصنيف —</option>' + (() => { const dc = dataCats(), cur = it ? S_(it.category) : ''; const extra = cur && !dc.some(x => nk(x) === nk(cur)) ? [cur] : []; return dc.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join(''); })() + '</select>' + (dataCats().length ? '' : '<div class="hint" style="margin-top:4px">لا توجد تصنيفات. أضفها من تاب التصنيفات والخيارات.</div>') + '</div>'
       : '<div class="form-group"><label for="ie-cat">التصنيف <span class="req">*</span></label><input type="text" id="ie-cat" list="ie-cats" autocomplete="off" value="' + esc(it ? it.category : '') + '"><datalist id="ie-cats">' + cats.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist></div>') : '') +
-    (!c.grainType ? '<div class="form-group"><label for="ie-grain">نوع الحبة <span class="req">*</span></label><select id="ie-grain" disabled><option>العمود غير مربوط</option></select><div class="hint rp-due" style="margin-top:4px">عمود Grain Type في شيت Items مش مربوط. ' + (can('admin', 'e') ? '<a href="#" onclick="quickAutoMap();return false">اربطه تلقائياً الآن</a>' : 'اطلب من الأدمن يربطه.') + '</div></div>' : '') +
-    (c.grainType ? '<div class="form-group"><label for="ie-grain">نوع الحبة <span class="req">*</span></label>' + (() => { const gl = breadTypes(), cur = it ? S_(it.grainType) : ''; if (!gl) return '<input type="text" id="ie-grain" autocomplete="off" value="' + esc(cur) + '"><div class="hint" style="margin-top:4px">اربط عمود Grain Type في شيت Data لتختار من قائمة.</div>'; const extra = cur && !gl.some(x => nk(x) === nk(cur)) ? [cur] : []; return '<select id="ie-grain"><option value="">— اختر نوع الحبة —</option>' + gl.concat(extra).map(x => '<option value="' + esc(x) + '"' + (nk(x) === nk(cur) ? ' selected' : '') + '>' + esc(x) + (extra.includes(x) ? ' (غير مسجل في Data)' : '') + '</option>').join('') + '</select>' + (gl.length ? '' : '<div class="hint" style="margin-top:4px">لا توجد أنواع حبة في شيت Data.</div>'); })() + '</div>' : '') +
     (c.active ? '<div class="form-group"><label>الحالة</label><label class="toggle-inline"><input type="checkbox" id="ie-active"' + (!it || isOn(it.active) ? ' checked' : '') + '> صنف مفعّل</label></div>' : '') +
     '<div class="form-group" style="grid-column:1/-1"><label for="ie-icon">الأيقونة</label><div class="ie-icon-row"><div class="ie-icon-prev" id="ie-icon-prev">' + iconHTML(it ? it : {}) + '</div><input type="text" id="ie-icon" autocomplete="off" placeholder="إيموجي أو رابط صورة، أو اتركها فارغة للاختيار التلقائي" value="' + esc(it ? it.icon : '') + '"' + (c.icon ? '' : ' disabled') + '><button type="button" class="btn btn-secondary btn-sm" onclick="pickIcon(\'\')"' + (c.icon ? '' : ' disabled') + '>تلقائي</button></div>' +
     (c.icon ? '<div class="ie-emojis" id="ie-emojis">' + EMOJI_PICK.map(e => '<button type="button" class="ie-emo" onclick="pickIcon(\'' + e + '\')" aria-label="' + e + '">' + e + '</button>').join('') + '</div>' : '<div class="hint" style="margin-top:6px">لحفظ الأيقونة أضف عموداً باسم Icon في شيت Items واربطه من إعدادات الأدمن. حالياً تُختار الأيقونة تلقائياً من الاسم والفئة.</div>') + '</div>' +
@@ -5799,7 +6129,6 @@ async function saveItem() {
   if (!name) { err.textContent = 'أدخل اسم الصنف'; return; }
   if (priceRaw === '' || isNaN(Number(priceRaw)) || Number(priceRaw) < 0) { err.textContent = 'أدخل سعراً صحيحاً'; return; }
   if (MAP.items.cols.category && !$('ie-cat').value.trim()) { err.textContent = 'اختر التصنيف'; return; }
-  if (MAP.items.cols.grainType && !$('ie-grain').value.trim()) { err.textContent = 'اختر نوع الحبة'; return; }
   const oldI = IE.isNew ? null : DB.items.find(i => S_(i.code) === S_(IE.code));
   const dupI = (!oldI || nk(oldI.name) !== nk(name)) && DB.items.find(i => nk(i.name) === nk(name) && i !== oldI);
   if (dupI) { err.textContent = 'يوجد صنف بنفس الاسم بالفعل (' + S_(dupI.code) + ' · ' + S_(dupI.name) + ')'; return; }
@@ -5809,10 +6138,9 @@ async function saveItem() {
   if (c.active) vals[c.active] = activeValue($('ie-active').checked);
   if (c.note) vals[c.note] = $('ie-note').value.trim();
   if (c.icon) vals[c.icon] = $('ie-icon').value.trim();
-  if (c.grainType) vals[c.grainType] = $('ie-grain').value.trim();
   $('ie-save').disabled = true;
   try {
-    if (IE.isNew) await appendRow('items', { name, price: Number(priceRaw), category: c.category ? $('ie-cat').value.trim() : undefined, active: c.active ? activeValue($('ie-active').checked) : undefined, note: c.note ? $('ie-note').value.trim() : undefined, icon: c.icon ? $('ie-icon').value.trim() : undefined, grainType: c.grainType ? $('ie-grain').value.trim() : undefined });
+    if (IE.isNew) await appendRow('items', { name, price: Number(priceRaw), category: c.category ? $('ie-cat').value.trim() : undefined, active: c.active ? activeValue($('ie-active').checked) : undefined, note: c.note ? $('ie-note').value.trim() : undefined, icon: c.icon ? $('ie-icon').value.trim() : undefined });
     else { await gsCall('update', { sheet, keyCol: c.code, keyValue: IE.code, values: vals, unique: uniqFor('items') }); }
     const wasNew = IE.isNew;
     closeItemEditor();
@@ -5840,6 +6168,39 @@ async function reloadData(silent) {
   renderItems();
 }
 
+/* ───────── زرار التحديث اليدوي + التحديث التلقائي ───────── */
+async function manualRefresh(btn) {
+  if (!CFG.scriptUrl) { toast('الموقع غير مربوط بالشيت'); return; }
+  if (btn) btn.classList.add('spinning');
+  try {
+    await loadAll();
+    if (CUR === 'add-order') buildBuilder();
+    setConn('ok', 'متصل');
+    toast('تم تحديث البيانات ✅');
+  } catch (e) {
+    toast(gsError(e));
+  } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
+}
+
+let AUTO_REFRESH_TIMER = null;
+function startAutoRefresh() {
+  stopAutoRefresh();
+  AUTO_REFRESH_TIMER = setInterval(silentAutoRefresh, 60000);
+}
+function stopAutoRefresh() {
+  if (AUTO_REFRESH_TIMER) { clearInterval(AUTO_REFRESH_TIMER); AUTO_REFRESH_TIMER = null; }
+}
+async function silentAutoRefresh() {
+  if (!CFG.scriptUrl || !AUTH.user) return;
+  if (document.querySelector('.modal-backdrop:not([hidden])')) return; // ما نزعجش حد وسط تعديل
+  try {
+    await loadAll();
+    if (CUR === 'add-order') buildBuilder();
+  } catch (e) { /* فشل صامت، التحديث اليدوي هيبان لو فيه مشكلة اتصال */ }
+}
+
 /* ───────── التصنيفات والخيارات (Items.category / Groups / Options / Groups - Options) ───────── */
 const SRV = { v: 0 };
 const catReady = t => tableOk(t) && DB && Array.isArray(DB[t]);
@@ -5863,7 +6224,7 @@ const UNIQUE = {
   options: [{ f: ['group', 'name'], l: 'اختيار بنفس الاسم في نفس المجموعة' }],
   groupOptions: [{ f: ['item', 'group'], l: 'نفس الربط' }],
   clients: [{ f: ['name'], l: 'عميل بنفس الاسم' }, { f: ['phone'], phone: 1, l: 'عميل بنفس رقم الجوال' }],
-  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }, { f: ['payment'], l: 'نفس طريقة الدفع' }, { f: ['category'], l: 'نفس التصنيف' }],
+  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }, { f: ['payment'], l: 'نفس طريقة الدفع' }, { f: ['category'], l: 'نفس التصنيف' }, { f: ['orderSource'], l: 'نفس مصدر الطلب' }],
   payments: [{ f: ['code'], l: 'دفعة بنفس الرقم' }]
 };
 function uniqFor(t) {
@@ -5890,9 +6251,9 @@ function dupBanner(id, grid, n, what, on, toggle) {
   if (n) el.innerHTML = '<span>⚠️ يوجد ' + n + ' ' + what + ' مكرر في الشيت. عدّل أو احذف المكرر ليبقى سجل واحد فقط.</span><button type="button" class="btn btn-secondary btn-sm" onclick="' + toggle + '">' + (on ? 'عرض الكل' : 'عرض المكرر فقط') + '</button>';
 }
 const CAT = { sec: 'cats', q: '' };
-const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع' };
-const SEC_MIN = { cities: 8, areas: 8, payments: 8 };
-const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], cities: ['data'], areas: ['data'], payments: ['data'] };
+const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع', orderSources: 'مصادر الطلب' };
+const SEC_MIN = { cities: 8, areas: 8, payments: 8, orderSources: 8 };
+const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], cities: ['data'], areas: ['data'], payments: ['data'], orderSources: ['data'] };
 const AUTO_DEF = { items: ['ITEM', 4], groups: ['GRP', 3], options: ['OPT', 3] };
 let CG_ROWS = [], CG = null;
 
@@ -5998,6 +6359,23 @@ function areasFor(city) {
   areaRows().forEach(a => { if ((!a.city || a.city === city) && !seen.has(a.area)) { seen.add(a.area); out.push(a.area); } });
   return out.sort((a, b) => a.localeCompare(b, 'ar'));
 }
+// كل المناطق المسجلة (بلا تقييد بمدينة)، لاستخدامها في منطقة التوصيل بإضافة الطلب
+function allAreaNames() {
+  const seen = new Set(), out = [];
+  areaRows().forEach(a => { if (a.area && !seen.has(a.area)) { seen.add(a.area); out.push(a.area); } });
+  return out.sort((a, b) => a.localeCompare(b, 'ar'));
+}
+function orderAreaOpts(sel) {
+  const as = allAreaNames(), extra = sel && !as.includes(sel) ? [sel] : [];
+  return '<option value="">' + (as.length || extra.length ? '— اختر المنطقة —' : 'لا توجد مناطق مسجلة') + '</option>' + as.concat(extra).map(a => '<option value="' + esc(a) + '"' + (a === sel ? ' selected' : '') + '>' + esc(a) + (extra.includes(a) ? ' (غير موجودة في القائمة)' : '') + '</option>').join('');
+}
+function fillOrderAreas(sel) {
+  const el = $('c-area'); if (!el) return;
+  const cur = sel !== undefined ? sel : el.value;
+  el.innerHTML = orderAreaOpts(cur);
+  const hint = $('c-area-hint');
+  if (hint) hint.textContent = !catReady('data') ? (CFG.scriptUrl ? 'المناطق تُقرأ من شيت Data. اربطه من إعدادات الأدمن.' : '') : !allAreaNames().length ? 'أضف المدن والمناطق من تاب التصنيفات والخيارات ← المناطق.' : '';
+}
 function cityList() {
   const map = new Map();
   dataRows().forEach(r => { const c = S_(r.city); if (!c) return; if (!map.has(c)) map.set(c, { name: c, areas: 0, clients: 0 }); if (S_(r.area)) map.get(c).areas++; });
@@ -6026,7 +6404,7 @@ function renderCatalog() {
   const body = $('cg-body');
   if (!body) return;
   $('cg-tabs').innerHTML = Object.keys(SECS).map(k => '<button type="button" class="seg-btn' + (CAT.sec === k ? ' active' : '') + '" onclick="catSec(\'' + k + '\')">' + SECS[k] + '</button>').join('');
-  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع' }[CAT.sec];
+  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع', orderSources: '+ إضافة مصدر' }[CAT.sec];
   $('cg-add').textContent = addLabel;
   $('cg-warn').hidden = srvOk(SEC_MIN[CAT.sec] || 6) || !CFG.scriptUrl || !DB;
   CG_ROWS = [];
@@ -6040,6 +6418,11 @@ function renderCatalog() {
   if (CAT.sec === 'payments' && !MAP.data.cols.payment) {
     body.innerHTML = cgEmpty('💳', 'عمود طرق الدفع غير مربوط', esc('أضف عموداً باسم «Payment Method» في الصف الأول من شيت ' + MAP.data.sheet + '، ثم من إعدادات الأدمن اضغط «فحص الاتصال» و«حفظ للجميع».'));
     $('cg-sub').textContent = 'طرق الدفع من شيت Data';
+    return;
+  }
+  if (CAT.sec === 'orderSources' && !MAP.data.cols.orderSource) {
+    body.innerHTML = cgEmpty('🔖', 'عمود مصدر الطلب غير مربوط', esc('أضف عموداً باسم «Order Source» في الصف الأول من شيت ' + MAP.data.sheet + '، ثم من إعدادات الأدمن اضغط «فحص الاتصال» و«حفظ للجميع».'));
+    $('cg-sub').textContent = 'مصادر الطلب من شيت Data';
     return;
   }
   const q = CAT.q.trim().toLowerCase(), hit = s => !q || s.toLowerCase().includes(q);
@@ -6093,6 +6476,14 @@ function renderCatalog() {
       CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
       return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
     }).join('') + '</tbody></table></div></div>' : cgEmpty('💳', all.length ? 'لا نتائج مطابقة' : 'لا توجد طرق دفع', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف طرق الدفع مثل نقدي، فودافون كاش، إنستاباي. تُحفظ في شيت Data وتظهر عند تسجيل الطلب.');
+  } else if (CAT.sec === 'orderSources') {
+    const all = orderSources() || [], list = all.filter(p => hit(p));
+    const used = {}; orders.forEach(o => { if (o.orderSource) used[nk(o.orderSource)] = (used[nk(o.orderSource)] || 0) + 1; });
+    $('cg-sub').textContent = all.length + ' مصدر';
+    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>مصدر الطلب</th><th>الطلبات</th><th>إجراء</th></tr></thead><tbody>' + list.map(p => {
+      CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
+      return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>' : cgEmpty('🔖', all.length ? 'لا نتائج مطابقة' : 'لا توجد مصادر طلب', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف مصادر الطلب مثل فيسبوك، إنستجرام، توصية عميل. تُحفظ في شيت Data وتظهر عند تسجيل الطلب.');
   } else {
     const codes = new Set((DB.items || []).map(i => S_(i.code)));
     const list = DB.groupOptions.filter(l => { const itm = (DB.items || []).find(i => S_(i.code) === S_(l.item)); return hit(l.item + ' ' + (itm ? S_(itm.name) : '') + ' ' + gName(l.group)); });
@@ -6124,7 +6515,7 @@ document.addEventListener('click', e => {
 });
 
 // حذف مدينة/منطقة من شيت Data: لو عمود طرق الدفع في نفس الصفوف نفرّغ الخلايا بدل حذف الصف كله
-const dataDel = keys => ['payment', 'breadType', 'category'].some(k => MAP.data.cols[k])
+const dataDel = keys => ['payment', 'breadType', 'category', 'orderSource'].some(k => MAP.data.cols[k])
   ? gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', keys), values: mapVals('data', { city: '', area: '' }) })
   : gsCall('delete', { sheet: MAP.data.sheet, match: matchOf('data', keys) });
 async function cgDelete(sec, row) {
@@ -6140,6 +6531,8 @@ async function cgDelete(sec, row) {
       await delRow('groups', { code: row.code });
     } else if (sec === 'payments') {
       for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: '' }) });
+    } else if (sec === 'orderSources') {
+      for (const v of rawVals('data', 'orderSource', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { orderSource: v }), values: mapVals('data', { orderSource: '' }) });
     } else if (sec === 'cities') {
       if (row.clients) { toast('لا يمكن حذف مدينة بها عملاء. انقل عملاءها لمدينة أخرى أولاً'); return; }
       for (const v of rawVals('data', 'city', row.name)) await dataDel({ city: v });
@@ -6214,6 +6607,10 @@ function openCg(sec, row, pre) {
     if (!MAP.data.cols.payment) { toast('اربط عمود طرق الدفع في شيت Data أولاً'); return; }
     title = isNew ? 'إضافة طريقة دفع' : 'تعديل طريقة الدفع';
     f = fld('cg-pname', 'طريقة الدفع <span class="req">*</span>', '<input type="text" id="cg-pname" autocomplete="off" placeholder="مثال: فودافون كاش" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">الطلبات القديمة تظل مسجلة بالاسم القديم.</div>');
+  } else if (sec === 'orderSources') {
+    if (!MAP.data.cols.orderSource) { toast('اربط عمود مصدر الطلب في شيت Data أولاً'); return; }
+    title = isNew ? 'إضافة مصدر طلب' : 'تعديل مصدر الطلب';
+    f = fld('cg-osname', 'مصدر الطلب <span class="req">*</span>', '<input type="text" id="cg-osname" autocomplete="off" placeholder="مثال: فيسبوك" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">الطلبات القديمة تظل مسجلة بالاسم القديم.</div>');
   } else {
     title = isNew ? 'إضافة ربط' : 'تعديل الربط';
     const v = row || {}, cats = catList().map(c => c.name), codes = (DB.items || []).map(i => S_(i.code));
@@ -6224,7 +6621,7 @@ function openCg(sec, row, pre) {
   $('cg-modal-body').innerHTML = '<div class="m-head"><div><h2 id="cg-title">' + title + '</h2><p>يُحفظ مباشرة في الشيت</p></div></div><div class="m-body"><div class="form-grid">' + f + '</div><div class="login-err" id="cg-err" role="alert"></div></div>' +
     '<div class="m-foot"><button class="btn btn-primary" id="cg-save" onclick="saveCg()">حفظ</button><button class="btn btn-secondary" onclick="closeCg()">إلغاء</button></div>';
   $('cg-modal').hidden = false;
-  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-item'); if (el) el.focus(); }, 50);
+  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-osname') || $('cg-item'); if (el) el.focus(); }, 50);
 }
 // أنواع الحبة من شيت Data (عمود Bread Type)
 function breadTypes() {
@@ -6352,6 +6749,12 @@ async function saveCg() {
       if ((payMethods() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('طريقة الدفع موجودة بالفعل');
       if (isNew) await appendRow('data', { payment: name });
       else if (name !== row.name) for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: name }), unique: uniqFor('data') });
+    } else if (sec === 'orderSources') {
+      const name = $('cg-osname').value.trim();
+      if (!name) return fail('أدخل مصدر الطلب');
+      if ((orderSources() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('مصدر الطلب موجود بالفعل');
+      if (isNew) await appendRow('data', { orderSource: name });
+      else if (name !== row.name) for (const v of rawVals('data', 'orderSource', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { orderSource: v }), values: mapVals('data', { orderSource: name }), unique: uniqFor('data') });
     } else {
       const item = $('cg-item').value.trim(), group = $('cg-group').value;
       if (!item) return fail('أدخل التصنيف أو كود الصنف');
