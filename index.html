@@ -3750,6 +3750,7 @@ function nav(page) {
   ttEl.classList.remove('tt-anim'); void ttEl.offsetWidth; ttEl.classList.add('tt-anim');
   if (page === 'add-order') { goStep(1); if (!$('c-date').value) $('c-date').value = todayStr(); fillCustomerSelect(); fillOrderSources(); fillOrderAreas(); buildBuilder(); }
   if (page === 'settings') onSettingsOpen();
+  if (page === 'admin' && !META && CFG.scriptUrl && can('admin', 'v')) { gsCall('ping').then(r => { META = { spreadsheet: r.spreadsheet, sheets: r.sheets }; renderMap(); }).catch(() => {}); }
   if (page === 'items') renderItems();
   if (page === 'catalog') renderCatalog();
   if (page === 'customers') renderCustomers();
@@ -5639,7 +5640,6 @@ async function doLogin(ev) {
     }
     const r = await gsCall('login', { username, password });
     AUTH.token = r.token; AUTH.user = r.user; AUTH.secured = true;
-    lsSet(LS_SESS, r.token);
     await loginSuccessFlash();
     await afterAuth();
   } catch (e) {
@@ -5675,7 +5675,7 @@ async function diagnoseLocal() {
   if (!st.admins) { AUTH.diag = 'لا يوجد أدمن مدمج في كود Apps Script. اكتب اليوزر والباسورد داخل ADMINS في أول الكود ثم انشر نسخة جديدة.'; return; }
   try {
     const r = await gsCall('login', { username: la.username, password: la.password });
-    AUTH.token = r.token; AUTH.user = r.user; lsSet(LS_SESS, r.token);
+    AUTH.token = r.token; AUTH.user = r.user;
   } catch (e) {
     AUTH.diag = e.message === 'invalid'
       ? 'الأدمن غير مطابق لما في كود Apps Script. اكتب داخل ADMINS هناك: ' + la.username + ' / ' + la.password + ' ثم انشر نسخة جديدة.'
@@ -5718,7 +5718,6 @@ async function afterAuth() {
   hideLogin();
   applyAuthUI();
   if (!canOpen(CUR)) nav(['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'reports', 'settings'].find(canOpen));
-  if (AUTH.secured && CFG.scriptUrl && (AUTH.token || !(AUTH.user && AUTH.user.local)) && can('admin', 'v') && !META) { try { const r = await gsCall('ping'); META = { spreadsheet: r.spreadsheet, sheets: r.sheets }; } catch (e) {} }
   if (!CFG.scriptUrl) setConn('off', 'غير متصل');
   else if (AUTH.user && AUTH.user.local && !AUTH.token && AUTH.diag) setConn('err', 'غير متصل بالشيت');
   else {
@@ -5738,11 +5737,9 @@ async function startup() {
     AUTH.secured = !!st.secured; SRV.v = st.v || 0;
     AUTH.user = null;
     if (AUTH.secured) {
-      AUTH.token = lsGet(LS_SESS) || '';
-      if (AUTH.token) {
-        try { AUTH.user = (await gsCall('me')).user; } catch (e) { AUTH.token = ''; lsDel(LS_SESS); }
-      }
-      if (!AUTH.user) { setConn('ok', 'متصل'); applyAuthUI(); showLogin(); return; }
+      // دايمًا نطلب تسجيل الدخول من جديد كل ما يُفتح الموقع (من غير استعادة جلسة قديمة من المتصفح)
+      AUTH.token = ''; lsDel(LS_SESS);
+      setConn('ok', 'متصل'); applyAuthUI(); showLogin(); return;
     } else {
       AUTH.token = '';
       // وضع الإعداد: نجهز بيانات الشيتات لصفحة الأدمن أيضا
