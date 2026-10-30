@@ -1721,6 +1721,18 @@ body.o-dragging .col-body { min-height: 120px; }
 .rp-card { margin-bottom: 16px; }
 .rp-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .rp-card-h h3 { font-size: 15px; margin: 0; }
+.rp-copy-btn { font-size: 12px; padding: 5px 10px; flex: none; }
+.msg-tokens { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.msg-tok-label { display: block; font-size: 11.5px; color: var(--fg-muted); margin-bottom: 4px; }
+.msg-tok-btn { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--fg-muted); cursor: pointer; font-family: inherit; }
+.msg-tok-btn:hover { background: var(--brand-light); color: var(--brand); border-color: var(--brand); }
+.msg-calc { margin-top: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.msg-calc-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.msg-calc-row select, .msg-calc-row input[type="number"] { font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--fg); font-family: inherit; }
+.msg-calc-row input[type="number"] { width: 80px; }
+.msg-preview-box { margin-top: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.msg-preview-box h4 { margin: 0 0 8px; font-size: 13px; color: var(--fg-muted); }
+.msg-preview-box pre { white-space: pre-wrap; font-family: inherit; margin: 0; font-size: 13px; color: var(--fg); min-height: 1.4em; }
 .rp-table tfoot td { font-weight: 800; background: var(--bg); border-top: 2px solid var(--border); }
 .rp-due { color: color-mix(in srgb, var(--danger) 75%, var(--fg)); }
 .rp-ic { display: inline-block; width: 22px; text-align: center; }
@@ -2687,6 +2699,7 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
             <div class="sn-item active" data-sec="account" tabindex="0" onclick="setSec('account')">👤 حسابي</div>
             <div class="sn-item" data-sec="users" data-perm="settings:v" tabindex="0" onclick="setSec('users')">👥 المستخدمون</div>
             <div class="sn-item" data-sec="prefs" tabindex="0" onclick="setSec('prefs')">🎨 التفضيلات</div>
+            <div class="sn-item" data-sec="messages" tabindex="0" onclick="setSec('messages')">✉️ رسائل النسخ</div>
             <div class="sn-item" data-sec="log" data-perm="log:v" tabindex="0" onclick="setSec('log')">🧾 سجل الحركات</div>
           </div>
 
@@ -2752,6 +2765,64 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                   <button type="button" class="seg-btn" data-v="desktop" onclick="setUIPref('desktop')">التصميم الحالي دايمًا</button>
                 </div>
                 <p class="hint" id="ui-pref-hint" style="margin-top:10px"></p>
+              </div>
+            </div>
+
+            <div id="set-messages" hidden>
+              <div class="setting-section">
+                <h3>رسائل النسخ (تقرير التحضير)</h3>
+                <p class="hint" style="margin:0 0 8px">اختار القائمة اللي عايز تظبط رسالتها، واكتب شكل الرسالة زي ما تحب. اضغط على أي بيانة من اللي تحت عشان تضيفها في مكان الكتابة (هتتحط في آخر نقطة كنت واقف عندها).</p>
+                <p class="hint" id="msg-sync-hint" style="margin:0 0 12px"></p>
+                <div class="seg" id="msg-group-seg">
+                  <button type="button" class="seg-btn active" data-v="bread" onclick="msgSelectGroup('bread')">أنواع الحبة</button>
+                  <button type="button" class="seg-btn" data-v="items" onclick="msgSelectGroup('items')">الأصناف</button>
+                  <button type="button" class="seg-btn" data-v="options" onclick="msgSelectGroup('options')">الاختيارات</button>
+                </div>
+
+                <div class="form-group" style="margin-top:14px">
+                  <label for="msg-header">نص أعلى الرسالة (مرة واحدة، فوق القائمة)</label>
+                  <textarea id="msg-header" rows="3" dir="rtl" onfocus="msgFocusField('msg-header')" oninput="msgUpdatePreview()"></textarea>
+                </div>
+                <div class="msg-calc">
+                  <span class="msg-tok-label">📅 التاريخ — اختار الشكل اللي عايزه وبعدين اضغط إضافة:</span>
+                  <div class="msg-calc-row">
+                    <select id="msg-date-fmt"></select>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="msgInsertDateFmt()">إضافة</button>
+                  </div>
+                </div>
+                <div class="msg-calc">
+                  <span class="msg-tok-label">🔢 الكمية — اختار نوع الرقم، وممكن كمان تعمل عليه عملية حسابية (+ − × ÷):</span>
+                  <div class="msg-calc-row">
+                    <select id="msg-calc-h-base"></select>
+                    <select id="msg-calc-h-op" onchange="msgCalcOpChanged('header')"></select>
+                    <input type="number" id="msg-calc-h-num" value="1" step="any" hidden>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="msgInsertCalc('header')">إضافة</button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top:14px">
+                  <label for="msg-line">نص كل سطر (بيتكرر لكل عنصر في القائمة)</label>
+                  <textarea id="msg-line" rows="2" dir="rtl" onfocus="msgFocusField('msg-line')" oninput="msgUpdatePreview()"></textarea>
+                </div>
+                <div class="msg-tokens" id="msg-tokens-line"></div>
+                <div class="msg-calc">
+                  <span class="msg-tok-label">🔢 كمية كل سطر — تقدر تعمل عليها عملية حسابية (+ − × ÷) قبل ما تضيفها:</span>
+                  <div class="msg-calc-row">
+                    <select id="msg-calc-l-op" onchange="msgCalcOpChanged('line')"></select>
+                    <input type="number" id="msg-calc-l-num" value="1" step="any" hidden>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="msgInsertCalc('line')">إضافة</button>
+                  </div>
+                </div>
+
+                <div class="form-actions" style="margin-top:14px;justify-content:flex-start">
+                  <button class="btn btn-primary btn-sm" data-perm="admin:e" onclick="msgSaveTpl()">حفظ</button>
+                  <button class="btn btn-secondary btn-sm" data-perm="admin:e" onclick="msgResetTpl()">استرجاع الشكل الافتراضي</button>
+                </div>
+
+                <div class="msg-preview-box">
+                  <h4>معاينة</h4>
+                  <pre id="msg-preview"></pre>
+                </div>
               </div>
             </div>
 
@@ -2922,7 +2993,7 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 13, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'status') return json_({ ok: true, v: 14, secured: secured, configured: !!um, admins: builtin_().length });
     if (action === 'login') return json_(login_(body, um, secured, cfg));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
@@ -3459,7 +3530,7 @@ function init_(user, cfg) {
     var sh = ss_().getSheetByName(m[t].sheet);
     if (allowed && sh && !data[m[t].sheet]) data[m[t].sheet] = { headers: headers_(sh), rows: rows_(sh, 0) };
   });
-  return { ok: true, mapping: m, user: user ? pub_(user) : null, data: data };
+  return { ok: true, mapping: m, msgTpl: cfg.msgTpl || null, user: user ? pub_(user) : null, data: data };
 }
 
 function rows_(sh, limit) {
@@ -3685,7 +3756,7 @@ function delete_(b, user, cfg) {
 
 <script>
 // ⇩ استبدل هذا السطر بالسطر الذي تنسخه من: إعدادات الأدمن ← تثبيت الإعدادات في الموقع
-const DEFAULT_CONFIG = {"scriptUrl":"https://script.google.com/macros/s/AKfycbzKBAuGgnzv0PoZ31UKE1gogdVHTomzVD1xRkuoGJ5fD0jWtWaUvbg3WZfsx01nhrgqjA/exec","key":""};
+const DEFAULT_CONFIG = { scriptUrl: "", key: "", mapping: {} };
 // أدمن محلي: يدخل الموقع مباشرة بدون أي اتصال بالشيت (لإعداد الربط). كلمة المرور ظاهرة في هذا الملف، فلا ترفعه لمكان عام.
 const LOCAL_ADMINS = [{ username: 'AA', password: '20236', name: 'المدير العام' }];
 
@@ -3924,6 +3995,237 @@ const fmtN = n => (Math.round(n * 100) / 100).toLocaleString('en-US');
 const RP = { tab: 'prep', from: '', to: '', quick: '', q: '' };
 const RP_TABS = { prep: '🧑‍🍳 قائمة التحضير', debt: '📌 المديونيات', pay: '💵 التحصيل', sales: '📊 المبيعات' };
 let RP_EXPORT = null;
+// بيانات كل قائمة من قوائم تقرير التحضير، بالشكل الموحّد {name, qty, group?} — بتتحدّث كل مرة يتعمل فيها rpPrep()
+let RP_PREP_DATA = { bread: [], items: [], options: [] };
+let RP_PREP_BREAD = [];   // اسم قديم لنفس RP_PREP_DATA.bread، متسيب عشان التوافق
+const dayNameAr = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('ar-EG-u-nu-latn', { weekday: 'long' }) : '';
+const ddmmyyyy = v => { if (!v) return ''; const [y, m, d] = v.split('-'); return d + '/' + m + '/' + y; };
+const rpPeriodLabel = () => RP.from && RP.to && RP.from === RP.to ? dayNameAr(RP.from) + ' ' + ddmmyyyy(RP.from) : rangeTxt();
+// ينسخ نص جاهز للصق (واتساب وغيره) لقائمة معينة، مع تنبيه نجاح/فشل عبر toast
+async function copyListText(text) {
+  try { await navigator.clipboard.writeText(text); toast('تم النسخ، جاهزة للصق'); return; } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('تم النسخ، جاهزة للصق');
+  } catch (e) { toast('تعذّر النسخ تلقائيًا'); }
+}
+
+// ───── رسائل النسخ القابلة للتعديل (إعدادات > رسائل النسخ) ─────
+// كل مجموعة (أنواع الحبة / الأصناف / الاختيارات) ليها نص "فوق" (مرة واحدة) ونص "سطر" (بيتكرر لكل عنصر)،
+// وكلاهما ممكن يحتوي على بيانات بين قوسين معقوصين زي {الكمية} بتتستبدل بالقيمة الفعلية وقت النسخ.
+// أي بيانة رقمية (الكمية، اجمالي الكمية، متوسط الكمية، عدد الأنواع) ممكن كمان تتكتب بعملية حسابية عليها
+// بنفس الاسم + علامة حسابية + رقم، زي {اجمالي الكمية+1} أو {الكمية*2} — والحاسبة تحت بتولّد الصيغة دي لوحدها.
+const MSG_GROUPS = {
+  bread: { label: 'أنواع الحبة', lineTokens: [['{النوع}', 'اسم نوع الحبة']] },
+  items: { label: 'الأصناف', lineTokens: [['{الصنف}', 'اسم الصنف']] },
+  options: { label: 'الاختيارات', lineTokens: [['{الاختيار}', 'اسم الاختيار'], ['{المجموعة}', 'اسم المجموعة اللي الاختيار تابع لها']] }
+};
+const MSG_DATE_FORMATS = [
+  ['{الفترة}', 'اليوم + التاريخ (أو الفترة كاملة لو أكتر من يوم) — الشكل الافتراضي'],
+  ['{التاريخ}', 'يوم/شهر/سنة — مثال 05/11/2026'],
+  ['{سنة-شهر-يوم}', 'سنة-شهر-يوم — مثال 2026-11-05'],
+  ['{التاريخ بالعربي}', 'رقم اليوم واسم الشهر — مثال 5 نوفمبر'],
+  ['{اسم الشهر}', 'اسم الشهر لوحده — مثال نوفمبر'],
+  ['{اليوم}', 'اسم اليوم لوحده (يحتاج يوم واحد مختار) — مثال الخميس']
+];
+const MSG_QTY_BASES = [
+  ['اجمالي الكمية', 'إجمالي الكمية (جمع كل الكميات في القائمة)'],
+  ['متوسط الكمية', 'متوسط الكمية لكل عنصر في القائمة'],
+  ['عدد الأنواع', 'عدد الأنواع/العناصر المختلفة في القائمة']
+];
+const MSG_CALC_OPS = [['', 'بدون عملية إضافية — الرقم زي ما هو'], ['+', '+ زيادة رقم'], ['-', '− نقصان رقم'], ['*', '× ضرب في رقم'], ['/', '÷ قسمة على رقم']];
+const MSG_TPL_DEFAULT = {
+  bread: { header: '🌾 عجين {الفترة} - غير شامل الزيادة\n', line: '>> {الكمية} - {النوع}' },
+  items: { header: '📦 الأصناف {الفترة}\n', line: '>> {الكمية} - {الصنف}' },
+  options: { header: '🧩 الاختيارات {الفترة}\n', line: '>> {الكمية} - {الاختيار} ({المجموعة})' }
+};
+// بيدمج أي شكل محفوظ (من الشيت أو من الجهاز) مع الشكل الافتراضي، عشان لو مجموعة جديدة اتضافت مستقبلاً يبقى ليها قيمة دايمًا
+function mergeMsgTpl(o) {
+  o = o || {};
+  return { bread: Object.assign({}, MSG_TPL_DEFAULT.bread, o.bread), items: Object.assign({}, MSG_TPL_DEFAULT.items, o.items), options: Object.assign({}, MSG_TPL_DEFAULT.options, o.options) };
+}
+function loadMsgTpl() {
+  try { const s = lsGet(LS_MSGTPL); if (s) return mergeMsgTpl(JSON.parse(s)); } catch (e) {}
+  return JSON.parse(JSON.stringify(MSG_TPL_DEFAULT));
+}
+let MSG_TPL = loadMsgTpl();
+let MSG_TPL_SHARED = false; // true لما الشكل الحالي يكون جاي من الشيت (مشترك لكل اللي بيستخدموا الموقع)، مش من الجهاز بس
+let MSG_SEL_GROUP = 'bread';
+let MSG_FOCUS_FIELD = 'msg-header';
+const MSG_SAMPLE_ROWS = {
+  bread: [{ name: 'كور - ٢٢ جم', qty: 12 }, { name: 'فطير مينيز', qty: 5 }],
+  items: [{ name: 'كرواسون زبدة', qty: 8 }, { name: 'فينو', qty: 3 }],
+  options: [{ name: 'بالجبنة', qty: 4, group: 'الحشو' }, { name: 'سادة', qty: 2, group: 'الحشو' }]
+};
+// بتستبدل كل مفاتيح literal الموجودة في str بقيمتها (بحث واستبدال نصي بسيط)، وقبلها بتحل أي عملية حسابية
+// مكتوبة جوه قوسين معقوصين زي {اجمالي الكمية+1} أو {الكمية*2} — لو الاسم قبل العلامة مش بيانة رقمية معروفة بتتسيب زي ما هي
+const MSG_CALC_RE = /\{([^{}]+?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)\}/g;
+function applyTokens(str, literalData, numericBases) {
+  let s = str || '';
+  s = s.replace(MSG_CALC_RE, (whole, baseRaw, op, numStr) => {
+    const key = baseRaw.trim();
+    if (!numericBases || !(key in numericBases)) return whole;
+    const n = Number(numStr), v = Number(numericBases[key]) || 0;
+    let result = v;
+    if (op === '+') result = v + n;
+    else if (op === '-') result = v - n;
+    else if (op === '*') result = v * n;
+    else if (op === '/') result = n === 0 ? v : v / n;
+    return fmtN(result);
+  });
+  Object.keys(literalData).forEach(k => { s = s.split(k).join(literalData[k]); });
+  return s;
+}
+const monthNameAr = v => v ? new Date(v + 'T00:00:00').toLocaleDateString('ar-EG-u-nu-latn', { month: 'long' }) : '';
+function msgHeaderNumerics(rows) {
+  const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  return { 'اجمالي الكمية': totalQty, 'متوسط الكمية': rows.length ? totalQty / rows.length : 0, 'عدد الأنواع': rows.length };
+}
+function msgHeaderData(rows) {
+  const num = msgHeaderNumerics(rows);
+  return {
+    '{الفترة}': rpPeriodLabel(),
+    '{التاريخ}': !RP.from ? '' : (RP.from === RP.to ? ddmmyyyy(RP.from) : ddmmyyyy(RP.from) + ' - ' + ddmmyyyy(RP.to)),
+    '{سنة-شهر-يوم}': RP.from || '',
+    '{التاريخ بالعربي}': RP.from ? fmtDate(RP.from) : '',
+    '{اسم الشهر}': monthNameAr(RP.from),
+    '{اليوم}': (RP.from && RP.to && RP.from === RP.to) ? dayNameAr(RP.from) : '',
+    '{اجمالي الكمية}': fmtN(num['اجمالي الكمية']),
+    '{متوسط الكمية}': fmtN(num['متوسط الكمية']),
+    '{عدد الأنواع}': String(num['عدد الأنواع'])
+  };
+}
+function msgLineNumerics(r) { return { 'الكمية': Number(r.qty) || 0 }; }
+function msgLineData(groupId, r) {
+  const qtyTxt = fmtN(Number(r.qty) || 0);
+  if (groupId === 'items') return { '{الكمية}': qtyTxt, '{الصنف}': r.name };
+  if (groupId === 'options') return { '{الكمية}': qtyTxt, '{الاختيار}': r.name, '{المجموعة}': r.group || '—' };
+  return { '{الكمية}': qtyTxt, '{النوع}': r.name };
+}
+function renderGroupMsgWith(groupId, rows, tpl) {
+  if (!rows || !rows.length) return '';
+  const headerLines = applyTokens(tpl.header, msgHeaderData(rows), msgHeaderNumerics(rows)).split('\n');
+  const lineLines = rows.map(r => applyTokens(tpl.line, msgLineData(groupId, r), msgLineNumerics(r)));
+  return headerLines.concat(lineLines).join('\n');
+}
+function renderGroupMsg(groupId, rows) {
+  return renderGroupMsgWith(groupId, rows, MSG_TPL[groupId] || MSG_TPL_DEFAULT[groupId]);
+}
+function copyPrepGroup(groupId) {
+  const rows = (RP_PREP_DATA && RP_PREP_DATA[groupId]) || [];
+  const text = renderGroupMsg(groupId, rows);
+  if (!text) { toast('لا توجد بيانات للنسخ'); return; }
+  copyListText(text);
+}
+function rpPrepBreadText() { return renderGroupMsg('bread', (RP_PREP_DATA && RP_PREP_DATA.bread) || []); } // اسم قديم متسيب للتوافق
+function copyPrepBread() { copyPrepGroup('bread'); }
+
+function msgFocusField(id) { MSG_FOCUS_FIELD = id; }
+function msgSelectGroup(g) {
+  MSG_SEL_GROUP = g;
+  document.querySelectorAll('#msg-group-seg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === g));
+  renderMsgSettings();
+}
+function renderMsgSettings() {
+  const g = MSG_SEL_GROUP;
+  const tpl = MSG_TPL[g] || MSG_TPL_DEFAULT[g];
+  $('msg-header').value = tpl.header;
+  $('msg-line').value = tpl.line;
+  if (!$('msg-date-fmt').options.length) {
+    $('msg-date-fmt').innerHTML = MSG_DATE_FORMATS.map(t => '<option value="' + esc(t[0]) + '" title="' + esc(t[1]) + '">' + esc(t[1]) + '</option>').join('');
+    $('msg-calc-h-base').innerHTML = MSG_QTY_BASES.map(t => '<option value="' + esc(t[0]) + '" title="' + esc(t[1]) + '">' + esc(t[1]) + '</option>').join('');
+    $('msg-calc-h-op').innerHTML = MSG_CALC_OPS.map(t => '<option value="' + esc(t[0]) + '">' + esc(t[1]) + '</option>').join('');
+    $('msg-calc-l-op').innerHTML = MSG_CALC_OPS.map(t => '<option value="' + esc(t[0]) + '">' + esc(t[1]) + '</option>').join('');
+  }
+  $('msg-tokens-line').innerHTML = MSG_GROUPS[g].lineTokens.map(t => '<button type="button" class="msg-tok-btn" title="' + esc(t[1]) + '" onclick="msgInsertToken(\'' + t[0] + '\')">' + t[0] + '</button>').join('');
+  msgUpdateSyncHint();
+  msgUpdatePreview();
+}
+function msgUpdateSyncHint() {
+  const el = $('msg-sync-hint'); if (!el) return;
+  if (!CFG.scriptUrl) { el.textContent = 'اربط الشيت أولاً من إعدادات الأدمن عشان تقدر تحفظ الرسائل.'; el.className = 'hint'; return; }
+  if (!can('admin', 'e')) { el.textContent = 'التعديل والحفظ هنا للأدمن بس. باقي المستخدمين بيشوفوا نفس الرسالة المحفوظة ويقدروا ينسخوها.'; el.className = 'hint'; return; }
+  if (!srvOk(14)) { el.textContent = '📍 الحفظ دلوقتي بيتم على جهازك بس. عشان الرسالة تتحفظ وتظهر لأي حد بيفتح الموقع من أي جهاز، حدّث كود Apps Script (الصق الكود الجديد من «كود Google Apps Script» في إعدادات الأدمن) وانشر نسخة جديدة.'; el.className = 'hint'; return; }
+  el.textContent = MSG_TPL_SHARED ? '✅ الرسائل دي مشتركة: أي حد بيفتح الموقع هيشوف نفس الشكل.' : '📍 لسه محفوظة على جهازك بس. اضغط «حفظ» عشان تتحفظ وتبقى مشتركة لكل اللي بيستخدموا الموقع.';
+  el.className = 'hint';
+}
+function msgInsertDateFmt() {
+  MSG_FOCUS_FIELD = 'msg-header';
+  msgInsertToken($('msg-date-fmt').value);
+}
+function msgCalcOpChanged(scope) {
+  const isLine = scope === 'line';
+  const op = $(isLine ? 'msg-calc-l-op' : 'msg-calc-h-op').value;
+  $(isLine ? 'msg-calc-l-num' : 'msg-calc-h-num').hidden = !op;
+}
+function msgInsertCalc(scope) {
+  const isLine = scope === 'line';
+  const base = isLine ? 'الكمية' : $('msg-calc-h-base').value;
+  const op = $(isLine ? 'msg-calc-l-op' : 'msg-calc-h-op').value;
+  let tok;
+  if (!op) tok = '{' + base + '}';
+  else {
+    const num = String(($(isLine ? 'msg-calc-l-num' : 'msg-calc-h-num').value) || '').trim();
+    if (!num || isNaN(Number(num))) { toast('اكتب رقم صحيح الأول'); return; }
+    tok = '{' + base + op + num + '}';
+  }
+  MSG_FOCUS_FIELD = isLine ? 'msg-line' : 'msg-header';
+  msgInsertToken(tok);
+}
+function msgInsertToken(tok) {
+  const id = MSG_FOCUS_FIELD === 'msg-line' ? 'msg-line' : 'msg-header';
+  const el = $(id); if (!el) return;
+  const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? el.value.length;
+  el.value = el.value.slice(0, start) + tok + el.value.slice(end);
+  const pos = start + tok.length;
+  el.focus(); el.setSelectionRange(pos, pos);
+  MSG_FOCUS_FIELD = id;
+  msgUpdatePreview();
+}
+function msgUpdatePreview() {
+  const g = MSG_SEL_GROUP;
+  const header = $('msg-header').value, line = $('msg-line').value;
+  const rows = (RP_PREP_DATA && RP_PREP_DATA[g] && RP_PREP_DATA[g].length) ? RP_PREP_DATA[g] : MSG_SAMPLE_ROWS[g];
+  $('msg-preview').textContent = renderGroupMsgWith(g, rows, { header, line }) || '—';
+}
+// بيحاول يحفظ شكل الرسائل الحالي (MSG_TPL) على الشيت عشان يبقى مشترك لكل اللي بيستخدموا الموقع.
+// بيحافظ على باقي إعدادات الشيت (ربط الأعمدة...) زي ما هي، ويغيّر msgTpl بس.
+async function syncMsgTplToServer() {
+  if (!CFG.scriptUrl || !can('admin', 'e') || !srvOk(14)) return { ok: false };
+  try {
+    const cur = (await gsCall('ping')).config || {};
+    await gsCall('setConfig', { config: Object.assign({}, cur, { msgTpl: MSG_TPL, savedAt: new Date().toISOString() }) });
+    MSG_TPL_SHARED = true;
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e }; }
+}
+async function msgSaveTpl() {
+  const g = MSG_SEL_GROUP;
+  MSG_TPL[g] = { header: $('msg-header').value, line: $('msg-line').value };
+  lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL));
+  msgUpdatePreview();
+  const r = await syncMsgTplToServer();
+  if (r.ok) toast('اتحفظ شكل الرسالة، ومشترك دلوقتي لكل اللي بيستخدموا الموقع');
+  else if (!CFG.scriptUrl || !can('admin', 'e')) toast('اتحفظ على جهازك بس');
+  else if (!srvOk(14)) toast('اتحفظ على جهازك بس. حدّث كود Apps Script عشان يتحفظ للجميع');
+  else toast('اتحفظ على جهازك بس، لكن حصل خطأ في الحفظ للجميع: ' + gsError(r.error));
+  msgUpdateSyncHint();
+}
+async function msgResetTpl() {
+  const g = MSG_SEL_GROUP;
+  MSG_TPL[g] = JSON.parse(JSON.stringify(MSG_TPL_DEFAULT[g]));
+  lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL));
+  renderMsgSettings();
+  const r = await syncMsgTplToServer();
+  toast(r.ok ? 'رجعت الرسالة للشكل الافتراضي، لكل اللي بيستخدموا الموقع' : 'رجعت الرسالة للشكل الافتراضي على جهازك');
+  msgUpdateSyncHint();
+}
+// زرار نسخ في آخر/فوق كارت قائمة التحضير؛ onclick هو الاستدعاء الكامل، ولو مفيش واحد بيتظهر تنبيه بسيط
+const rpCopyBtn = onclick => '<button type="button" class="btn btn-secondary rp-copy-btn" onclick="' + (onclick || "toast('لسه مفيش رسالة جاهزة لنسخ القائمة دي')") + '">📋 نسخ رسالة</button>';
 const isOpt = r => /^option/i.test(S_(r.lineType));
 const itemIconFor = name => { const it = (DB && DB.items || []).find(i => nk(i.name) === nk(name)); return it ? iconHTML(it) : '🥖'; };
 // المدفوعات بشكل موحد
@@ -3956,7 +4258,7 @@ function setRpQuick(k) { RP.quick = k; const r = rpRange(k); RP.from = r[0]; RP.
 function openReport(tab, quick) { RP.tab = tab; if (RP_QUICK[tab]) { const k = quick || RP_DEFAULT[tab]; RP.quick = k; const r = rpRange(k); RP.from = r[0]; RP.to = r[1]; } nav('reports'); }
 function rpTab(tab) { RP.tab = tab; if (RP_QUICK[tab]) setRpQuick(RP_DEFAULT[tab]); else renderReport(); }
 const rpTable = (head, rows, foot, cls) => '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table rp-table ' + (cls || '') + '"><thead><tr>' + head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') : '<tr><td colspan="' + head.length + '" class="cg-meta" style="padding:18px">لا توجد بيانات في الفترة دي</td></tr>') + '</tbody>' + (foot && rows.length ? '<tfoot><tr>' + foot.map(c => '<td>' + c + '</td>').join('') + '</tr></tfoot>' : '') + '</table></div></div>';
-const rpCard = (title, inner, sub) => '<section class="rp-card"><div class="rp-card-h"><h3>' + title + '</h3>' + (sub ? '<span class="cg-meta">' + sub + '</span>' : '') + '</div>' + inner + '</section>';
+const rpCard = (title, inner, sub, btn) => '<section class="rp-card"><div class="rp-card-h"><h3>' + title + '</h3>' + (btn || (sub ? '<span class="cg-meta">' + sub + '</span>' : '')) + '</div>' + inner + '</section>';
 const rpKpis = arr => '<div class="rp-kpis">' + arr.map(k => '<div class="rp-kpi"><div class="rp-kpi-l">' + k[0] + '</div><div class="rp-kpi-v">' + k[1] + '</div>' + (k[2] ? '<div class="rp-kpi-s">' + k[2] + '</div>' : '') + '</div>').join('') + '</div>';
 const rangeTxt = () => !RP.from && !RP.to ? 'كل الفترات' : RP.from === RP.to ? fmtDate(RP.from) + ' ' + RP.from.slice(0, 4) : (RP.from ? fmtDate(RP.from) : '…') + ' ← ' + (RP.to ? fmtDate(RP.to) : '…');
 const inRange = d => d && (!RP.from || d >= RP.from) && (!RP.to || d <= RP.to);
@@ -3990,14 +4292,16 @@ function rpPrep() {
   const itemRows = Array.from(items.values()).sort((a, b) => b.qty - a.qty);
   const optRows = Array.from(opts.values()).sort((a, b) => a.group.localeCompare(b.group) || b.qty - a.qty);
   const breadRows = Array.from(bread.entries()).sort((a, b) => b[1].qty - a[1].qty);
+  RP_PREP_DATA = { bread: breadRows.map(x => ({ name: x[0], qty: x[1].qty })), items: itemRows.map(x => ({ name: x.name, qty: x.qty })), options: optRows.map(x => ({ name: x.name, qty: x.qty, group: x.group })) };
+  RP_PREP_BREAD = RP_PREP_DATA.bread;
   const pick = os.filter(o => o.deliver !== 'توصيل').length;
   RP_EXPORT = [['النوع', 'المجموعة', 'الاسم', 'الكمية']].concat(itemRows.map(x => ['صنف', '', x.name, x.qty]), optRows.map(x => ['اختيار', x.group, x.name, x.qty]), breadRows.map(x => ['نوع الحبة', '', x[0], x[1].qty]));
   return rpKpis([['عدد الطلبات', os.length, pick + ' استلام · ' + (os.length - pick) + ' توصيل'], ['قطع الأصناف', fmtN(itemRows.reduce((s, x) => s + x.qty, 0))], ['قطع الاختيارات', fmtN(optRows.reduce((s, x) => s + x.qty, 0))]]) +
     '<div class="rp-grid">' +
-    rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>']))) +
-    rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), 'من صفوف الأصناف والاختيارات') +
+    rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('items')")) +
+    rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('bread')")) +
     '</div>' +
-    rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>']))) +
+    rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('options')")) +
     rpCard('الطلبات', rpTable(['#', 'التسليم', 'العميل', 'الأصناف', 'الحالة', 'الباقي'], os.map(o => ['<a href="#" onclick="nav(\'orders\');openOrder(' + oid(o) + ');return false">' + esc(o.id) + '</a>', fmtDate(o.date) + ' · ' + (o.deliver === 'توصيل' ? '🚚 ' + esc(o.address || '') : '🏪 استلام'), esc(o.customer), esc(o.items.map(i => i.qty + '× ' + i.name).join('، ')), '<span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span>', totals(o).rem > 0 ? '<b class="rp-due">' + money(totals(o).rem) + '</b>' : '<span class="tag tag-paid">مدفوع</span>'])));
 }
 
@@ -4340,7 +4644,7 @@ function goStep(n) {
 }
 
 /* العميل: يُختار من العملاء المسجلين فقط، مع زر إضافة سريعة */
-const wzClients = () => (clientsReady() ? DB.clients.filter(c => S_(c.name)) : []);
+const wzClients = () => (clientsReady() ? DB.clients.filter(c => S_(c.name) && isOn(c.active)) : []);
 const fullAddr = c => [S_(c.city), S_(c.area), S_(c.address)].filter(Boolean).join('، ');
 const canQuickAdd = () => can('customers', 'a') || can('add-order', 'a');
 // تُستدعى بعد كل تحميل للبيانات: تعيد ربط العميل المختار بالبيانات الجديدة
@@ -4443,9 +4747,9 @@ function itemGroups(it) {
   const seen = new Set(), out = [];
   links.forEach(l => {
     const g = DB.groups.find(x => S_(x.code) === S_(l.group));
-    if (!g || seen.has(S_(g.code))) return;
+    if (!g || seen.has(S_(g.code)) || !isOn(g.active)) return;
     seen.add(S_(g.code));
-    const opts = catReady('options') ? DB.options.filter(o => S_(o.group) === S_(g.code) && S_(o.name)) : [];
+    const opts = catReady('options') ? DB.options.filter(o => S_(o.group) === S_(g.code) && S_(o.name) && isOn(o.active)) : [];
     const multi = /multi|متعدد|many/i.test(S_(g.type));
     let min = Math.max(0, Number(g.min) || 0), max = Math.max(0, Number(g.max) || 0);
     if (MAP.groups.cols.required && S_(g.required) !== '' && isOn(g.required) && min < 1) min = 1;
@@ -4835,7 +5139,7 @@ function toggleTheme() {
   root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
 /* ───────── Google Sheets connection ───────── */
-const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache', LS_UI = 'bk_ui_pref';
+const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache', LS_UI = 'bk_ui_pref', LS_MSGTPL = 'bk_msg_tpl';
 const AUTH = { secured: false, token: '', user: null, diag: '' };
 
 /* ───────── شكل الموقع: تلقائي حسب حجم الشاشة، أو تفضيل شخصي محفوظ ───────── */
@@ -4906,7 +5210,9 @@ const TABLES = {
     { k: 'type', l: 'النوع (اختيار واحد / متعدد)', a: ['type', 'selection', 'النوع'] },
     { k: 'required', l: 'إجباري', a: ['required', 'mandatory', 'إجباري', 'اجباري'] },
     { k: 'min', l: 'الحد الأدنى', a: ['min', 'minimum', 'الحد الأدنى'] },
-    { k: 'max', l: 'الحد الأقصى', a: ['max', 'maximum', 'الحد الأقصى'] }
+    { k: 'max', l: 'الحد الأقصى', a: ['max', 'maximum', 'الحد الأقصى'] },
+    { k: 'groupCategory', l: 'تصنيف المجموعة (لتجميع التقارير)', a: ['groupcategory', 'category', 'classification', 'تصنيف المجموعة', 'التصنيف'] },
+    { k: 'active', l: 'نشطة (اختياري)', a: ['active', 'enabled', 'نشط', 'مفعل'] }
   ] },
   options: { label: 'الاختيارات', hint: 'مثل Cut (+20) أو Uncut', sheetAlias: ['options', 'option', 'الاختيارات'], fields: [
     { k: 'code', l: 'كود الاختيار', a: ['optioncode', 'code', 'id', 'كود الاختيار'] },
@@ -4915,7 +5221,8 @@ const TABLES = {
     { k: 'price', l: 'سعر الإضافة', a: ['extraprice', 'price', 'additionalprice', 'سعر الإضافة', 'السعر'] },
     { k: 'breadType', l: 'نوع الحبة', a: ['graintype', 'grain', 'breadtype', 'bread', 'نوع الحبة', 'نوع الحبة'] },
     { k: 'minQty', l: 'أقل كمية من الاختيار', a: ['minqty', 'minquantity', 'min', 'اقل كمية', 'الحد الأدنى'] },
-    { k: 'maxQty', l: 'أقصى كمية من الاختيار', a: ['maxqty', 'maxquantity', 'max', 'اقصى كمية', 'الحد الأقصى'] }
+    { k: 'maxQty', l: 'أقصى كمية من الاختيار', a: ['maxqty', 'maxquantity', 'max', 'اقصى كمية', 'الحد الأقصى'] },
+    { k: 'active', l: 'نشط (اختياري)', a: ['active', 'enabled', 'نشط', 'مفعل'] }
   ] },
   groupOptions: { label: 'ربط الأصناف بالمجموعات', hint: 'أي صنف أو فئة يظهر له أي سؤال', sheetAlias: ['groupsoptions', 'groupoptions', 'itemgroups', 'itemoptiongroups'], fields: [
     { k: 'item', l: 'كود الصنف أو اسم التصنيف (Value)', req: 1, a: ['value', 'item', 'itemcode', 'category', 'الصنف', 'الفئة', 'القيمة'] },
@@ -4929,7 +5236,8 @@ const TABLES = {
     { k: 'address', l: 'العنوان', need: 1, a: ['address', 'العنوان'] },
     { k: 'city', l: 'المدينة', need: 1, a: ['city', 'cityname', 'town', 'المدينة', 'مدينة'] },
     { k: 'area', l: 'المنطقة', need: 1, a: ['area', 'areaname', 'district', 'zone', 'المنطقة', 'منطقة', 'الحي'] },
-    { k: 'notes', l: 'ملاحظات', a: ['notes', 'note', 'ملاحظات'] }
+    { k: 'notes', l: 'ملاحظات', a: ['notes', 'note', 'ملاحظات'] },
+    { k: 'active', l: 'نشط (اختياري)', a: ['active', 'enabled', 'نشط', 'مفعل'] }
   ] },
   data: { label: 'المدن والمناطق', hint: 'شيت Data: كل صف مدينة ومنطقة تابعة لها، والمنطقة الفارغة تعني مدينة بلا مناطق بعد', sheetAlias: ['data', 'locations', 'cities', 'areas', 'البيانات', 'المدن'], keepAny: 1, fields: [
     { k: 'city', l: 'المدينة', req: 1, a: ['city', 'cityname', 'cities', 'town', 'المدينة', 'مدينة', 'المدن'] },
@@ -4937,7 +5245,8 @@ const TABLES = {
     { k: 'category', l: 'تصنيفات الأصناف (قائمة مستقلة في نفس الشيت)', a: ['itemcategory', 'itemcategories', 'category', 'categories', 'التصنيف', 'التصنيفات'] },
     { k: 'breadType', l: 'أنواع الحبة (قائمة مستقلة في نفس الشيت)', a: ['graintype', 'graintypes', 'grain', 'breadtype', 'breadtypes', 'نوع الحبة', 'انواع الحبة'] },
     { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] },
-    { k: 'orderSource', l: 'مصادر الطلب (قائمة مستقلة في نفس الشيت)', a: ['ordersource', 'ordersources', 'source', 'leadsource', 'مصدر الطلب', 'مصادر الطلب'] }
+    { k: 'orderSource', l: 'مصادر الطلب (قائمة مستقلة في نفس الشيت)', a: ['ordersource', 'ordersources', 'source', 'leadsource', 'مصدر الطلب', 'مصادر الطلب'] },
+    { k: 'groupCategory', l: 'تصنيف المجموعات (قائمة مستقلة في نفس الشيت)', a: ['groupcategory', 'groupcategories', 'classification', 'classifications', 'تصنيف المجموعات', 'تصنيفات المجموعات'] }
   ] },
   sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة. الخصم والإضافة والمدفوع مرة واحدة فقط (موزعة على الأسطر) فيصح جمع الأعمدة', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
     { k: 'date', l: 'تاريخ ووقت تسجيل الحركة (Action Date)', a: ['actiondate', 'createdat', 'timestamp', 'datetime', 'تاريخ الحركة'] },
@@ -5419,6 +5728,8 @@ async function loadAll() {
     lsSet(LS_MAP, JSON.stringify(cleanMap()));
     cfgPreview();
   }
+  // شكل رسائل النسخ: لو محفوظ على الشيت (مشترك)، هو المرجع لكل الأجهزة؛ غير كده يفضل الشكل المحفوظ على الجهاز ده بس
+  if (r.msgTpl) { MSG_TPL = mergeMsgTpl(r.msgTpl); lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL)); MSG_TPL_SHARED = true; }
   const out = {};
   Object.keys(TABLES).forEach(t => {
     if (t === 'users' || !tableOk(t)) return;
@@ -5758,10 +6069,11 @@ async function startup() {
 
 /* ───────── Settings: account, users, preferences ───────── */
 function setSec(sec) {
-  ['account', 'users', 'prefs', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
+  ['account', 'users', 'prefs', 'messages', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
   document.querySelectorAll('#set-nav .sn-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
   if (sec === 'users') loadUsers();
   if (sec === 'log') loadLog();
+  if (sec === 'messages') renderMsgSettings();
 }
 function onSettingsOpen() {
   const active = document.querySelector('#set-nav .sn-item.active').dataset.sec;
@@ -6250,9 +6562,9 @@ function dupBanner(id, grid, n, what, on, toggle) {
   if (n) el.innerHTML = '<span>⚠️ يوجد ' + n + ' ' + what + ' مكرر في الشيت. عدّل أو احذف المكرر ليبقى سجل واحد فقط.</span><button type="button" class="btn btn-secondary btn-sm" onclick="' + toggle + '">' + (on ? 'عرض الكل' : 'عرض المكرر فقط') + '</button>';
 }
 const CAT = { sec: 'cats', q: '' };
-const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع', orderSources: 'مصادر الطلب' };
-const SEC_MIN = { cities: 8, areas: 8, payments: 8, orderSources: 8 };
-const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], cities: ['data'], areas: ['data'], payments: ['data'], orderSources: ['data'] };
+const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', groupCats: 'تصنيف المجموعات', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع', orderSources: 'مصادر الطلب' };
+const SEC_MIN = { cities: 8, areas: 8, payments: 8, orderSources: 8, groupCats: 8 };
+const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], groupCats: ['data'], cities: ['data'], areas: ['data'], payments: ['data'], orderSources: ['data'] };
 const AUTO_DEF = { items: ['ITEM', 4], groups: ['GRP', 3], options: ['OPT', 3] };
 let CG_ROWS = [], CG = null;
 
@@ -6267,7 +6579,7 @@ function boolVal(samples, on) {
   if (/^[01]$/.test(t)) return on ? 1 : 0;
   return on ? 'Y' : 'N';
 }
-const activeValue = on => boolVal((DB.items || []).map(i => i.active), on);
+const activeValue = (on, t) => boolVal((DB[t || 'items'] || []).map(r => r.active), on);
 
 // الكود التلقائي: أكبر رقم موجود + 1 مع نفس البادئة وعدد الخانات (وليس آخر سطر)
 function autoSpec(t) {
@@ -6403,7 +6715,7 @@ function renderCatalog() {
   const body = $('cg-body');
   if (!body) return;
   $('cg-tabs').innerHTML = Object.keys(SECS).map(k => '<button type="button" class="seg-btn' + (CAT.sec === k ? ' active' : '') + '" onclick="catSec(\'' + k + '\')">' + SECS[k] + '</button>').join('');
-  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع', orderSources: '+ إضافة مصدر' }[CAT.sec];
+  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', groupCats: '+ إضافة تصنيف', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع', orderSources: '+ إضافة مصدر' }[CAT.sec];
   $('cg-add').textContent = addLabel;
   $('cg-warn').hidden = srvOk(SEC_MIN[CAT.sec] || 6) || !CFG.scriptUrl || !DB;
   CG_ROWS = [];
@@ -6424,6 +6736,11 @@ function renderCatalog() {
     $('cg-sub').textContent = 'مصادر الطلب من شيت Data';
     return;
   }
+  if (CAT.sec === 'groupCats' && !MAP.data.cols.groupCategory) {
+    body.innerHTML = cgEmpty('🏷️', 'عمود تصنيف المجموعات غير مربوط', esc('أضف عموداً باسم «Group Category» في الصف الأول من شيت ' + MAP.data.sheet + '، ثم من إعدادات الأدمن اضغط «فحص الاتصال» و«حفظ للجميع».'));
+    $('cg-sub').textContent = 'تصنيف المجموعات من شيت Data';
+    return;
+  }
   const q = CAT.q.trim().toLowerCase(), hit = s => !q || s.toLowerCase().includes(q);
   let html = '';
   if (CAT.sec === 'cats') {
@@ -6438,11 +6755,12 @@ function renderCatalog() {
   } else if (CAT.sec === 'groups') {
     const c = MAP.groups.cols, list = DB.groups.filter(g => hit(g.name + ' ' + g.code));
     $('cg-sub').textContent = DB.groups.length + ' مجموعة';
-    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>المجموعة (السؤال)</th>' + (c.code ? '<th>الكود</th>' : '') + (c.type ? '<th>النوع</th>' : '') + (c.required ? '<th>إجباري</th>' : '') + ((c.min || c.max) ? '<th>الحدود</th>' : '') + (catReady('options') ? '<th>الاختيارات</th>' : '') + '<th>تنطبق على</th><th>إجراء</th></tr></thead><tbody>' + list.map(g => {
+    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>المجموعة (السؤال)</th>' + (c.code ? '<th>الكود</th>' : '') + (c.type ? '<th>النوع</th>' : '') + (c.groupCategory ? '<th>التصنيف</th>' : '') + (c.required ? '<th>إجباري</th>' : '') + ((c.min || c.max) ? '<th>الحدود</th>' : '') + (catReady('options') ? '<th>الاختيارات</th>' : '') + '<th>تنطبق على</th>' + (c.active ? '<th>الحالة</th>' : '') + '<th>إجراء</th></tr></thead><tbody>' + list.map(g => {
       CG_ROWS.push(g); const i = CG_ROWS.length - 1;
       const nOpt = catReady('options') ? DB.options.filter(o => S_(o.group) === S_(g.code)).length : 0;
       const apply = catReady('groupOptions') ? DB.groupOptions.filter(l => S_(l.group) === S_(g.code)).map(l => S_(l.item)) : [];
-      return '<tr><td><strong>' + esc(g.name) + '</strong></td>' + (c.code ? '<td dir="ltr">' + esc(g.code) + '</td>' : '') + (c.type ? '<td>' + typeLabel(g.type) + '</td>' : '') + (c.required ? '<td>' + (isOn(g.required) ? 'نعم' : 'لا') + '</td>' : '') + ((c.min || c.max) ? '<td>' + esc(g.min === '' ? '—' : g.min) + ' – ' + esc(g.max === '' ? '—' : g.max) + '</td>' : '') + (catReady('options') ? '<td>' + nOpt + '</td>' : '') + '<td>' + (apply.length ? apply.map(a => '<span class="chip">' + esc(a) + '</span>').join(' ') : '<span class="cg-meta">—</span>') + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
+      const on = isOn(g.active);
+      return '<tr' + (c.active && !on ? ' style="opacity:.55"' : '') + '><td><strong>' + esc(g.name) + '</strong></td>' + (c.code ? '<td dir="ltr">' + esc(g.code) + '</td>' : '') + (c.type ? '<td>' + typeLabel(g.type) + '</td>' : '') + (c.groupCategory ? '<td>' + (S_(g.groupCategory) ? esc(S_(g.groupCategory)) : '<span class="rp-due">بدون تصنيف</span>') + '</td>' : '') + (c.required ? '<td>' + (isOn(g.required) ? 'نعم' : 'لا') + '</td>' : '') + ((c.min || c.max) ? '<td>' + esc(g.min === '' ? '—' : g.min) + ' – ' + esc(g.max === '' ? '—' : g.max) + '</td>' : '') + (catReady('options') ? '<td>' + nOpt + '</td>' : '') + '<td>' + (apply.length ? apply.map(a => '<span class="chip">' + esc(a) + '</span>').join(' ') : '<span class="cg-meta">—</span>') + '</td>' + (c.active ? '<td><span class="pill ' + (on ? 'pill-ready' : 'pill-done') + '">' + (on ? 'مفعّلة' : 'معطّلة') + '</span></td>' : '') + '<td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
     }).join('') + '</tbody></table></div></div>' : cgEmpty('❓', 'لا توجد مجموعات', 'أضف مجموعة مثل «How do you like your sourdough?».');
   } else if (CAT.sec === 'options') {
     $('cg-sub').textContent = DB.options.length + ' اختيار';
@@ -6452,7 +6770,7 @@ function renderCatalog() {
     if (orphan.length) sections.push({ g: null, code: '', name: 'اختيارات بدون مجموعة معروفة', rows: orphan });
     const shown = sections.map(s => ({ s, rows: s.rows.filter(o => hit(o.name + ' ' + s.name)) })).filter(x => x.rows.length || (!q && x.s.g));
     html = shown.length ? shown.map(x => '<div class="cg-sec"><div class="cg-sec-h"><div><strong>' + esc(x.s.name) + '</strong> ' + (x.s.g && MAP.groups.cols.type ? '<span class="chip">' + typeLabel(x.s.g.type) + '</span>' : '') + '</div>' + (x.s.g && can('catalog', 'a') ? '<button class="btn btn-secondary btn-sm" onclick="openCg(\'options\',null,\'' + esc(x.s.code).replace(/'/g, '') + '\')">+ اختيار</button>' : '') + '</div>' +
-      (x.rows.length ? '<table class="data-table compact"><tbody>' + x.rows.map(o => { CG_ROWS.push(o); const i = CG_ROWS.length - 1; return '<tr><td><strong>' + esc(o.name) + '</strong></td>' + (MAP.options.cols.price ? '<td>' + (Number(o.price) ? '+' + esc(o.price) + ' ج.م' : 'مجاني') + '</td>' : '') + (MAP.options.cols.breadType ? '<td>' + (S_(o.breadType) ? '🍞 ' + esc(S_(o.breadType)) : '<span class="cg-meta">—</span>') + '</td>' : '') + (MAP.options.cols.minQty || MAP.options.cols.maxQty ? '<td>كمية ' + qtyTxt(o) + '</td>' : '') + '<td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>'; }).join('') + '</tbody></table>' : '<div class="cg-meta" style="padding:10px 16px">لا توجد اختيارات بعد</div>') + '</div>').join('') : cgEmpty('🧂', 'لا توجد اختيارات', 'أضف مجموعة أولاً ثم أضف اختياراتها مثل Cut و Uncut.');
+      (x.rows.length ? '<table class="data-table compact"><tbody>' + x.rows.map(o => { CG_ROWS.push(o); const i = CG_ROWS.length - 1; const on = isOn(o.active); return '<tr' + (MAP.options.cols.active && !on ? ' style="opacity:.55"' : '') + '><td><strong>' + esc(o.name) + '</strong>' + (MAP.options.cols.active && !on ? ' <span class="pill pill-done">معطّل</span>' : '') + '</td>' + (MAP.options.cols.price ? '<td>' + (Number(o.price) ? '+' + esc(o.price) + ' ج.م' : 'مجاني') + '</td>' : '') + (MAP.options.cols.breadType ? '<td>' + (S_(o.breadType) ? '🍞 ' + esc(S_(o.breadType)) : '<span class="cg-meta">—</span>') + '</td>' : '') + (MAP.options.cols.minQty || MAP.options.cols.maxQty ? '<td>كمية ' + qtyTxt(o) + '</td>' : '') + '<td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>'; }).join('') + '</tbody></table>' : '<div class="cg-meta" style="padding:10px 16px">لا توجد اختيارات بعد</div>') + '</div>').join('') : cgEmpty('🧂', 'لا توجد اختيارات', 'أضف مجموعة أولاً ثم أضف اختياراتها مثل Cut و Uncut.');
   } else if (CAT.sec === 'cities') {
     const all = cityList(), list = all.filter(c => hit(c.name)), hasCl = clientCityOk();
     $('cg-sub').textContent = all.length + ' مدينة';
@@ -6483,6 +6801,14 @@ function renderCatalog() {
       CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
       return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
     }).join('') + '</tbody></table></div></div>' : cgEmpty('🔖', all.length ? 'لا نتائج مطابقة' : 'لا توجد مصادر طلب', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف مصادر الطلب مثل فيسبوك، إنستجرام، توصية عميل. تُحفظ في شيت Data وتظهر عند تسجيل الطلب.');
+  } else if (CAT.sec === 'groupCats') {
+    const all = groupCategories() || [], list = all.filter(p => hit(p));
+    const used = {}; (DB.groups || []).forEach(g => { const v = S_(g.groupCategory); if (v) used[nk(v)] = (used[nk(v)] || 0) + 1; });
+    $('cg-sub').textContent = all.length + ' تصنيف';
+    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>تصنيف المجموعات</th><th>المجموعات</th><th>إجراء</th></tr></thead><tbody>' + list.map(p => {
+      CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
+      return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>' : cgEmpty('🏷️', all.length ? 'لا نتائج مطابقة' : 'لا توجد تصنيفات مجموعات', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف تصنيفات زي حشو، بذرة، تسوية. تُحفظ في شيت Data وتُستخدم لتجميع تقارير المجموعات.');
   } else {
     const codes = new Set((DB.items || []).map(i => S_(i.code)));
     const list = DB.groupOptions.filter(l => { const itm = (DB.items || []).find(i => S_(i.code) === S_(l.item)); return hit(l.item + ' ' + (itm ? S_(itm.name) : '') + ' ' + gName(l.group)); });
@@ -6514,7 +6840,7 @@ document.addEventListener('click', e => {
 });
 
 // حذف مدينة/منطقة من شيت Data: لو عمود طرق الدفع في نفس الصفوف نفرّغ الخلايا بدل حذف الصف كله
-const dataDel = keys => ['payment', 'breadType', 'category', 'orderSource'].some(k => MAP.data.cols[k])
+const dataDel = keys => ['payment', 'breadType', 'category', 'orderSource', 'groupCategory'].some(k => MAP.data.cols[k])
   ? gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', keys), values: mapVals('data', { city: '', area: '' }) })
   : gsCall('delete', { sheet: MAP.data.sheet, match: matchOf('data', keys) });
 async function cgDelete(sec, row) {
@@ -6532,6 +6858,9 @@ async function cgDelete(sec, row) {
       for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: '' }) });
     } else if (sec === 'orderSources') {
       for (const v of rawVals('data', 'orderSource', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { orderSource: v }), values: mapVals('data', { orderSource: '' }) });
+    } else if (sec === 'groupCats') {
+      if (row.used) { toast('لا يمكن حذف تصنيف مستخدم في مجموعات. غيّر تصنيف هذه المجموعات أولاً'); return; }
+      for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', { groupCategory: '' }) });
     } else if (sec === 'cities') {
       if (row.clients) { toast('لا يمكن حذف مدينة بها عملاء. انقل عملاءها لمدينة أخرى أولاً'); return; }
       for (const v of rawVals('data', 'city', row.name)) await dataDel({ city: v });
@@ -6578,9 +6907,11 @@ function openCg(sec, row, pre) {
     f = (c.code ? fld('cg-code', 'الكود (تلقائي)', '<input type="text" id="cg-code" dir="ltr" readonly value="' + esc(isNew ? previewCode('groups') : v.code) + '">') : '') +
       fld('cg-gname', 'اسم المجموعة (السؤال) <span class="req">*</span>', '<input type="text" id="cg-gname" autocomplete="off" value="' + esc(v.name || '') + '">', !c.code) +
       (c.type ? fld('cg-type', 'النوع', '<select id="cg-type">' + types.map(t => '<option value="' + esc(t) + '"' + ((isNew ? 'single' : S_(v.type)) === t ? ' selected' : '') + '>' + typeLabel(t) + ' (' + esc(t) + ')</option>').join('') + '</select>') : '') +
+      (c.groupCategory ? fld('cg-gcat', 'تصنيف المجموعة <span class="req">*</span>', groupCatSelect(isNew ? '' : S_(v.groupCategory))) : '<div class="res-msg warn" style="grid-column:1/-1">عمود «تصنيف المجموعة» غير مربوط في شيت ' + esc(MAP.groups.sheet) + '. أضفه من إعدادات الأدمن' + (can('admin', 'e') ? '، أو <a href="#" onclick="quickAutoMap(\'groups\');return false">اربطه تلقائياً الآن</a>.' : '، واطلب من الأدمن ربطه.') + '</div>') +
       (c.required ? fld('cg-req', 'إجباري', '<label class="toggle-inline"><input type="checkbox" id="cg-req"' + (isNew || isOn(v.required) ? ' checked' : '') + '> يجب على الموظف الاختيار</label>') : '') +
       (c.min ? fld('cg-min', 'الحد الأدنى للاختيارات', '<input type="number" id="cg-min" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.min) + '">') : '') +
-      (c.max ? fld('cg-max', 'الحد الأقصى للاختيارات', '<input type="number" id="cg-max" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.max) + '">') : '');
+      (c.max ? fld('cg-max', 'الحد الأقصى للاختيارات', '<input type="number" id="cg-max" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.max) + '">') : '') +
+      (c.active ? fld('cg-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cg-active"' + (isNew || isOn(v.active) ? ' checked' : '') + '> مجموعة مفعّلة</label>') : '');
   } else if (sec === 'options') {
     title = isNew ? 'إضافة اختيار' : 'تعديل الاختيار';
     const c = MAP.options.cols, v = row || {};
@@ -6589,6 +6920,7 @@ function openCg(sec, row, pre) {
       fld('cg-oname', 'اسم الاختيار <span class="req">*</span>', '<input type="text" id="cg-oname" autocomplete="off" value="' + esc(v.name || '') + '">') +
       (c.price ? fld('cg-price', 'السعر الإضافي (ج.م)', '<input type="number" id="cg-price" min="0" step="any" value="' + esc(isNew ? 0 : v.price) + '">') : '') +
       fld('cg-bread', 'نوع الحبة (اختياري)', c.breadType ? breadSelect(S_(v.breadType)) : '<select id="cg-bread" disabled><option>العمود غير مربوط</option></select>') +
+      (c.active ? fld('cg-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cg-active"' + (isNew || isOn(v.active) ? ' checked' : '') + '> اختيار مفعّل</label>') : '') +
       fld('cg-minq', 'أقل كمية لو اتختار', c.minQty ? '<input type="number" id="cg-minq" min="1" step="1" placeholder="1" value="' + esc(isNew ? '' : S_(v.minQty)) + '">' : '<input type="number" id="cg-minq" disabled placeholder="العمود غير مربوط">') +
       fld('cg-maxq', 'أقصى كمية', c.maxQty ? '<input type="number" id="cg-maxq" min="1" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : S_(v.maxQty)) + '">' : '<input type="number" id="cg-maxq" disabled placeholder="العمود غير مربوط">') +
       (!(c.breadType && c.minQty && c.maxQty) ? '<div class="res-msg warn" style="grid-column:1/-1">أعمدة غير مربوطة في شيت ' + esc(MAP.options.sheet) + ': ' + [!c.breadType && 'Bread Type', !c.minQty && 'Min Qty', !c.maxQty && 'Max Qty'].filter(Boolean).join('، ') + '. تأكد إنها مكتوبة في الصف الأول من الشيت' + (can('admin', 'e') ? '، ثم <a href="#" onclick="quickAutoMap(\'options\');return false">اربطها تلقائياً الآن</a>.' : '، واطلب من الأدمن ربطها.') + '</div>' : '') +
@@ -6610,6 +6942,10 @@ function openCg(sec, row, pre) {
     if (!MAP.data.cols.orderSource) { toast('اربط عمود مصدر الطلب في شيت Data أولاً'); return; }
     title = isNew ? 'إضافة مصدر طلب' : 'تعديل مصدر الطلب';
     f = fld('cg-osname', 'مصدر الطلب <span class="req">*</span>', '<input type="text" id="cg-osname" autocomplete="off" placeholder="مثال: فيسبوك" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">الطلبات القديمة تظل مسجلة بالاسم القديم.</div>');
+  } else if (sec === 'groupCats') {
+    if (!MAP.data.cols.groupCategory) { toast('اربط عمود تصنيف المجموعات في شيت Data أولاً'); return; }
+    title = isNew ? 'إضافة تصنيف مجموعات' : 'تعديل تصنيف المجموعات';
+    f = fld('cg-gcname', 'تصنيف المجموعات <span class="req">*</span>', '<input type="text" id="cg-gcname" autocomplete="off" placeholder="مثال: حشو" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">المجموعات التي تستخدم هذا التصنيف تتحدث لاسمه الجديد تلقائياً.</div>');
   } else {
     title = isNew ? 'إضافة ربط' : 'تعديل الربط';
     const v = row || {}, cats = catList().map(c => c.name), codes = (DB.items || []).map(i => S_(i.code));
@@ -6620,7 +6956,21 @@ function openCg(sec, row, pre) {
   $('cg-modal-body').innerHTML = '<div class="m-head"><div><h2 id="cg-title">' + title + '</h2><p>يُحفظ مباشرة في الشيت</p></div></div><div class="m-body"><div class="form-grid">' + f + '</div><div class="login-err" id="cg-err" role="alert"></div></div>' +
     '<div class="m-foot"><button class="btn btn-primary" id="cg-save" onclick="saveCg()">حفظ</button><button class="btn btn-secondary" onclick="closeCg()">إلغاء</button></div>';
   $('cg-modal').hidden = false;
-  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-osname') || $('cg-item'); if (el) el.focus(); }, 50);
+  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-osname') || $('cg-gcname') || $('cg-item'); if (el) el.focus(); }, 50);
+}
+// تصنيف المجموعات من شيت Data (عمود Group Category)؛ null لو العمود غير مربوط
+function groupCategories() {
+  if (!catReady('data') || !MAP.data.cols.groupCategory) return null;
+  const seen = new Set(), out = [];
+  DB.data.forEach(r => { const b = S_(r.groupCategory); if (b && !seen.has(nk(b))) { seen.add(nk(b)); out.push(b); } });
+  return out.sort((a, b) => a.localeCompare(b, 'ar'));
+}
+function groupCatSelect(cur) {
+  const list = groupCategories();
+  if (!list) return '<select id="cg-gcat" disabled><option>العمود غير مربوط</option></select>';
+  const extra = cur && !list.some(c => nk(c) === nk(cur)) ? [cur] : [];
+  return '<select id="cg-gcat"><option value="">— اختر التصنيف —</option>' + list.concat(extra).map(c => '<option value="' + esc(c) + '"' + (nk(c) === nk(cur) ? ' selected' : '') + '>' + esc(c) + (extra.includes(c) ? ' (غير موجود في Data)' : '') + '</option>').join('') + '</select>' +
+    (list.length ? '' : '<div class="hint" style="margin-top:4px">لا توجد تصنيفات مجموعات بعد. <a href="#" onclick="closeCg();catSec(\'groupCats\');return false">أضف أول تصنيف</a> ثم رجّع فتح المجموعة.</div>');
 }
 // أنواع الحبة من شيت Data (عمود Bread Type)
 function breadTypes() {
@@ -6696,11 +7046,15 @@ async function saveCg() {
       const min = $('cg-min') ? num('cg-min', 'الحد الأدنى') : '', max = $('cg-max') ? num('cg-max', 'الحد الأقصى') : '';
       if (min === null || max === null) return;
       if (min !== '' && max !== '' && min > max) return fail('الحد الأدنى أكبر من الحد الأقصى');
-      const vals = { name };
+      if (!MAP.groups.cols.groupCategory) return fail('اربط عمود «تصنيف المجموعة» من إعدادات الأدمن أولاً');
+      const gcat = $('cg-gcat').value.trim();
+      if (!gcat) return fail('اختر تصنيف المجموعة');
+      const vals = { name, groupCategory: gcat };
       if ($('cg-type')) vals.type = $('cg-type').value;
       if ($('cg-req')) vals.required = boolVal(DB.groups.map(g => g.required), $('cg-req').checked);
       if ($('cg-min')) vals.min = min;
       if ($('cg-max')) vals.max = max;
+      if ($('cg-active')) vals.active = activeValue($('cg-active').checked, 'groups');
       if (isNew) await appendRow('groups', vals); else await updRow('groups', { code: row.code }, vals);
     } else if (sec === 'options') {
       const group = $('cg-group').value, name = $('cg-oname').value.trim();
@@ -6717,7 +7071,17 @@ async function saveCg() {
       if (mn !== '' && mx !== '' && mn > mx) return fail('أقل كمية أكبر من أقصى كمية');
       if (MAP.options.cols.minQty) vals.minQty = mn;
       if (MAP.options.cols.maxQty) vals.maxQty = mx;
+      if ($('cg-active')) vals.active = activeValue($('cg-active').checked, 'options');
       if (isNew) await appendRow('options', vals); else await updRow('options', keyOf('options', row), vals);
+    } else if (sec === 'groupCats') {
+      const name = $('cg-gcname').value.trim();
+      if (!name) return fail('أدخل تصنيف المجموعات');
+      if ((groupCategories() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('هذا التصنيف موجود بالفعل');
+      if (isNew) await appendRow('data', { groupCategory: name });
+      else if (name !== row.name) {
+        for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', { groupCategory: name }), unique: uniqFor('data') });
+        if (row.used && MAP.groups.cols.groupCategory) for (const v of rawVals('groups', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.groups.sheet, match: { [MAP.groups.cols.groupCategory]: v }, values: { [MAP.groups.cols.groupCategory]: name } });
+      }
     } else if (sec === 'cities') {
       const name = $('cg-cname').value.trim();
       if (!name) return fail('أدخل اسم المدينة');
@@ -6854,9 +7218,9 @@ function renderCustomers() {
   CU_ROWS = [];
   grid.innerHTML = list.length ? list.map(x => {
     CU_ROWS.push(x); const i = CU_ROWS.length - 1, c = x.c, ph = fixPhone(c.phone), wa = waLink(c.phone);
-    const nm = S_(c.name);
-    return '<div class="cust-card clickable" tabindex="0" role="button" data-cu="open" data-i="' + i + '"><div class="cust-avatar">' + esc(nm.charAt(0) || '؟') + '</div><div class="cust-info">' +
-      '<div class="cust-name">' + esc(nm) + (dupC.has(c) ? ' <span class="chip dup-chip">مكرر</span>' : '') + '</div>' + (ph ? '<div class="cust-phone">' + esc(ph) + '</div>' : '') + ((c.city || c.area) ? '<div class="cust-addr">' + esc([S_(c.city), S_(c.area)].filter(Boolean).join(' · ')) + '</div>' : '') + (c.address ? '<div class="cust-addr">' + esc(c.address) + '</div>' : '') +
+    const nm = S_(c.name), on = isOn(c.active);
+    return '<div class="cust-card clickable" tabindex="0" role="button" data-cu="open" data-i="' + i + '"' + (cols.active && !on ? ' style="opacity:.55"' : '') + '><div class="cust-avatar">' + esc(nm.charAt(0) || '؟') + '</div><div class="cust-info">' +
+      '<div class="cust-name">' + esc(nm) + (dupC.has(c) ? ' <span class="chip dup-chip">مكرر</span>' : '') + (cols.active && !on ? ' <span class="pill pill-done">معطّل</span>' : '') + '</div>' + (ph ? '<div class="cust-phone">' + esc(ph) + '</div>' : '') + ((c.city || c.area) ? '<div class="cust-addr">' + esc([S_(c.city), S_(c.area)].filter(Boolean).join(' · ')) + '</div>' : '') + (c.address ? '<div class="cust-addr">' + esc(c.address) + '</div>' : '') +
       (orders ? '<div class="cust-stats"><div class="cust-stat"><div class="cust-stat-val">' + x.o.length + '</div><div class="cust-stat-key">طلب</div></div>' + (x.o.length && x.o[0].date ? '<div class="cust-stat"><div class="cust-stat-val">' + esc(fmtDay(x.o[0].date)) + '</div><div class="cust-stat-key">آخر طلب</div></div>' : '') + '</div>' : '') +
       '<div class="cust-actions">' + (ph ? '<a class="action-btn" href="tel:' + esc(ph) + '" title="اتصال" aria-label="اتصال" data-cu="link">📞</a>' : '') + (wa ? '<a class="action-btn" href="' + esc(wa) + '" target="_blank" rel="noopener" title="واتساب" aria-label="واتساب" data-cu="link">💬</a>' : '') +
       (can('customers', 'e') ? '<button class="action-btn" data-cu="edit" data-i="' + i + '" title="تعديل" aria-label="تعديل">✏️</button>' : '') + (can('customers', 'd') ? '<button class="action-btn danger" data-cu="del" data-i="' + i + '" title="حذف" aria-label="حذف">🗑</button>' : '') + '</div></div></div>';
@@ -6943,6 +7307,7 @@ function openCustomerEditor(row, fromOrder) {
     fld('cu-area', 'المنطقة ' + star, areaF) +
     fld('cu-addr', 'العنوان بالتفصيل ' + star, '<input type="text" id="cu-addr" autocomplete="off" value="' + esc(S_(v.address)) + '"' + dis('address') + '>') +
     (c.notes ? fld('cu-notes', 'ملاحظات (اختياري)', '<input type="text" id="cu-notes" autocomplete="off" value="' + esc(S_(v.notes)) + '">', true) : '') +
+    (c.active ? fld('cu-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cu-active"' + (isNew || isOn(v.active) ? ' checked' : '') + '> عميل نشط</label>') : '') +
     '</div><div class="login-err" id="cu-err" role="alert"></div></div><div class="m-foot"><button class="btn btn-primary" id="cu-save" onclick="saveCustomer()"' + (missing.length ? ' disabled' : '') + '>حفظ</button><button class="btn btn-secondary" onclick="closeCustomer()">إلغاء</button></div>';
   $('cu-modal').hidden = false;
   setTimeout(() => $('cu-name').focus(), 50);
@@ -6967,6 +7332,7 @@ async function saveCustomer() {
   if (samePhone) { err.textContent = 'هذا الرقم مسجل بالفعل للعميل «' + S_(samePhone.name) + '»'; return; }
   const vals = { name, phone, address, city, area };
   if (c.notes) vals.notes = $('cu-notes').value.trim();
+  if ($('cu-active')) vals.active = activeValue($('cu-active').checked, 'clients');
   $('cu-save').disabled = true;
   try {
     if (isNew) await appendRow('clients', vals, ['phone']);
