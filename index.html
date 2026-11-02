@@ -1140,6 +1140,17 @@ select {
 .toggle-row:last-child { border-bottom: none; }
 
 .toggle-info { flex: 1; }
+
+.to-list { display: flex; flex-direction: column; }
+.to-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px dashed var(--border);
+}
+.to-row:last-child { border-bottom: none; }
+.to-name { font-weight: 600; color: var(--fg); }
+.to-arrows { display: flex; gap: 6px; }
+.to-arrows .btn { padding: 4px 10px; line-height: 1; }
+.to-arrows .btn:disabled { opacity: .35; cursor: default; }
 .toggle-label { font-size: 13.5px; font-weight: 600; color: var(--fg); }
 .toggle-desc { font-size: 11.5px; color: var(--fg-muted); margin-top: 1px; }
 
@@ -2710,6 +2721,7 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
             <div class="sn-item" data-sec="users" data-perm="settings:v" tabindex="0" onclick="setSec('users')">👥 المستخدمون</div>
             <div class="sn-item" data-sec="prefs" tabindex="0" onclick="setSec('prefs')">🎨 التفضيلات</div>
             <div class="sn-item" data-sec="messages" tabindex="0" onclick="setSec('messages')">✉️ رسائل النسخ</div>
+            <div class="sn-item" data-sec="taborder" tabindex="0" onclick="setSec('taborder')">↕️ ترتيب التابات</div>
             <div class="sn-item" data-sec="log" data-perm="log:v" tabindex="0" onclick="setSec('log')">🧾 سجل الحركات</div>
           </div>
 
@@ -2832,6 +2844,31 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                 <div class="msg-preview-box">
                   <h4>معاينة</h4>
                   <pre id="msg-preview"></pre>
+                </div>
+              </div>
+            </div>
+
+            <div id="set-taborder" hidden>
+              <div class="setting-section">
+                <h3>القائمة الجانبية</h3>
+                <p class="hint" style="margin:0 0 10px">رتّب صفحات القائمة بالترتيب اللي يريحك. الإعدادات وإعدادات الأدمن بتفضل تحت دايمًا. الترتيب بيتحفظ على المتصفح ده بس.</p>
+                <div id="to-nav-list" class="to-list"></div>
+                <div class="form-actions" style="margin-top:10px;justify-content:flex-start">
+                  <button class="btn btn-secondary btn-sm" onclick="toReset('nav')">استرجاع الترتيب الافتراضي</button>
+                </div>
+              </div>
+              <div class="setting-section">
+                <h3>تابات صفحة "التصنيفات والخيارات"</h3>
+                <div id="to-cg-list" class="to-list"></div>
+                <div class="form-actions" style="margin-top:10px;justify-content:flex-start">
+                  <button class="btn btn-secondary btn-sm" onclick="toReset('cg')">استرجاع الترتيب الافتراضي</button>
+                </div>
+              </div>
+              <div class="setting-section">
+                <h3>تابات صفحة "التقارير"</h3>
+                <div id="to-rp-list" class="to-list"></div>
+                <div class="form-actions" style="margin-top:10px;justify-content:flex-start">
+                  <button class="btn btn-secondary btn-sm" onclick="toReset('rp')">استرجاع الترتيب الافتراضي</button>
                 </div>
               </div>
             </div>
@@ -3003,7 +3040,7 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 14, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'status') return json_({ ok: true, v: 15, secured: secured, configured: !!um, admins: builtin_().length });
     if (action === 'login') return json_(login_(body, um, secured, cfg));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
@@ -3601,18 +3638,52 @@ function append_(b, user, cfg) {
       });
     });
     if (!out.length) throw new Error('no rows');
-    if (b.unique && b.unique.length) checkUnique_(head, sh.getDataRange().getValues(), b.unique, out, null);
-    var start = sh.getLastRow() + 1;
-    (b.textCols || []).forEach(function (h) {
-      var i = head.indexOf(h);
-      if (i >= 0) sh.getRange(start, i + 1, out.length, 1).setNumberFormat('@');
-    });
-    sh.getRange(start, 1, out.length, head.length).setValues(out);
+    var allVals = sh.getDataRange().getValues();
+    if (b.unique && b.unique.length) checkUnique_(head, allVals, b.unique, out, null);
+    // packCols: ملء فراغ في صف موجود بدل إضافة صف جديد كل مرة، لقوائم مستقلة زي تصنيفات الأصناف/مصادر الطلب
+    // (كل عنصر إما اسم عمود واحد، أو مصفوفة أعمدة لازم تتعبى مع بعض زي [المدينة، المنطقة])
+    var filled = {};
+    if (b.packCols && b.packCols.length) {
+      (b.rows || []).forEach(function (r, ri) {
+        var anchor = null;
+        for (var pi = 0; pi < b.packCols.length; pi++) {
+          var e = b.packCols[pi], cols = Array.isArray(e) ? e : [e];
+          if (cols.every(function (h) { return r.hasOwnProperty(h) && r[h] !== '' && r[h] != null; })) { anchor = cols; break; }
+        }
+        if (!anchor) return;
+        for (var rr = 1; rr < allVals.length; rr++) {
+          var free = anchor.every(function (h) { var ci = head.indexOf(h); return ci >= 0 && String(allVals[rr][ci]).trim() === ''; });
+          if (!free) continue;
+          var rowNum = rr + 1;
+          Object.keys(r).forEach(function (h) {
+            if (r[h] === '' || r[h] == null) return;
+            var hi = head.indexOf(h);
+            if (hi < 0) return;
+            if ((b.textCols || []).indexOf(h) >= 0) sh.getRange(rowNum, hi + 1).setNumberFormat('@');
+            sh.getRange(rowNum, hi + 1).setValue(r[h]);
+            allVals[rr][hi] = r[h];
+          });
+          filled[ri] = true;
+          return;
+        }
+      });
+    }
+    var remaining = out.filter(function (_, ri) { return !filled[ri]; });
+    var addedCount = Object.keys(filled).length;
+    if (remaining.length) {
+      var start = sh.getLastRow() + 1;
+      (b.textCols || []).forEach(function (h) {
+        var i = head.indexOf(h);
+        if (i >= 0) sh.getRange(start, i + 1, remaining.length, 1).setNumberFormat('@');
+      });
+      sh.getRange(start, 1, remaining.length, head.length).setValues(remaining);
+      addedCount += remaining.length;
+    }
     var addDetails = (b.rows || []).map(function (r) {
       return Object.keys(r).filter(function (k) { return r[k] !== '' && r[k] != null; }).map(function (k) { return k + ': ' + r[k]; }).join('، ');
     }).join(' | ');
     logAction_(cfg, user, 'إضافة', b.sheet, (id !== null ? 'رقم: ' + id + ' — ' : '') + addDetails);
-    return { ok: true, id: id, added: out.length };
+    return { ok: true, id: id, added: addedCount };
   } finally {
     lock.releaseLock();
   }
@@ -4124,8 +4195,10 @@ function msgHeaderData(rows) {
 }
 function msgLineNumerics(r) { return { 'الكمية': Number(r.qty) || 0 }; }
 // تفصيل الكمية حسب الصنف (بيظهر بس لو الاختيار ده اتكرر في أكتر من صنف مختلف، وإلا التفصيل بيبقى نفس الإجمالي فمفيش داعي نكرره)
-function fmtBreakdownLines(byItem, bullet) {
-  if (!byItem || byItem.length < 2) return '';
+// min: أقل عدد عناصر عشان يظهر التفصيل خالص. بالنسبة لتفصيل الصنف (•) سيبها 2 زي ما كانت (مفيش داعي تتكرر لو صنف واحد بس)،
+// لكن تفصيل التصنيفات المرتبطة (🔗) لازم يظهر حتى لو عنصر واحد بس (ممكن بعد تحكم الروابط 🔗 يفضل ليه تصنيف واحد متربط)
+function fmtBreakdownLines(byItem, bullet, min) {
+  if (!byItem || byItem.length < (min || 2)) return '';
   return '\n' + byItem.map(x => '   ' + (bullet || '•') + ' ' + fmtN(x.qty) + ' ' + x.name).join('\n');
 }
 function msgLineData(groupId, r) {
@@ -4133,7 +4206,7 @@ function msgLineData(groupId, r) {
   if (groupId === 'items') return { '{الكمية}': qtyTxt, '{الصنف}': r.name };
   if (groupId === 'options' || isCatGroup(groupId)) {
     const d = { '{الكمية}': qtyTxt, '{الاختيار}': r.name, '{المجموعة}': r.group || '—' };
-    if (isCatGroup(groupId)) { d['{التفصيل}'] = fmtBreakdownLines(r.byItem); d['{تفصيل مرتبط}'] = fmtBreakdownLines(r.byLinked, '🔗'); }
+    if (isCatGroup(groupId)) { d['{التفصيل}'] = fmtBreakdownLines(r.byItem); d['{تفصيل مرتبط}'] = fmtBreakdownLines(r.byLinked, '🔗', 1); }
     return d;
   }
   return { '{الكمية}': qtyTxt, '{النوع}': r.name };
@@ -4307,7 +4380,7 @@ const inRange = d => d && (!RP.from || d >= RP.from) && (!RP.to || d <= RP.to);
 
 function renderReport() {
   const body = $('rp-body'); if (!body) return;
-  $('rp-tabs').innerHTML = Object.keys(RP_TABS).map(k => '<button type="button" class="seg-btn' + (RP.tab === k ? ' active' : '') + '" onclick="rpTab(\'' + k + '\')">' + RP_TABS[k] + '</button>').join('');
+  $('rp-tabs').innerHTML = orderedBy(Object.keys(RP_TABS), LS_RP_ORDER).map(k => '<button type="button" class="seg-btn' + (RP.tab === k ? ' active' : '') + '" onclick="rpTab(\'' + k + '\')">' + RP_TABS[k] + '</button>').join('');
   const q = RP_QUICK[RP.tab];
   $('rp-dates').hidden = !q;
   if (q) {
@@ -4332,13 +4405,6 @@ function rpPrep() {
   // اسم الاختيار (زي "عيش أسمر") → تصنيف المجموعة اللي الاختيار ده تابع لها، عشان لو الاختيار ده جاي كـ"نوع حبة" متداخل جوه اختيار تاني
   // (زي البذرة جوه الحشو في البوكس المتداخل) نقدر نلاقي تصنيفه ونعمله بطاقة تقرير/رسالة لوحده بنفس طريقة الاختيارات العادية
   const grpByCode = new Map((DB.groups || []).map(g => [S_(g.code), g]));
-  const optNameCat = new Map(), optNameGroupName = new Map();
-  (DB.options || []).forEach(o => {
-    const g = grpByCode.get(S_(o.group));
-    if (!g) return;
-    optNameCat.set(nk(S_(o.name)), S_(g.groupCategory));
-    optNameGroupName.set(nk(S_(o.name)), S_(g.name));
-  });
   os.forEach(o => {
     // خريطة رقم السطر (line) → اسم الصنف في نفس الفاتورة، عشان نقدر نعرف كل اختيار اتضاف لأنهي صنف،
     // ونبني تفصيل "فلان من التصنيف = كذا، منه كذا للصنف الفلاني وكذا للصنف التاني" في تقرير/رسالة التصنيف
@@ -4379,25 +4445,25 @@ function rpPrep() {
           const otherSel = lineCatOpt.get(S_(r.line));
           if (otherSel) otherSel.forEach((optName, otherCat) => {
             if (otherCat === cat) return;
-            x.byLinked.set(optName, (x.byLinked.get(optName) || 0) + q);
+            // كل تصنيف بيتحكم في روابطه 🔗 هو بس (من تاب «تصنيف المجموعات»): لو "الحشو" مش عايز يعرض قيم "الشكل" تحت بطاقته نتجاهل الاتجاه ده،
+            // ولو "الشكل" (أو العكس) مش عايز يعرض قيم "الحشو" تحت بطاقته نتجاهل الاتجاه التاني — كل اتجاه مستقل عن التاني
+            if (canLink(cat, otherCat)) x.byLinked.set(optName, (x.byLinked.get(optName) || 0) + q);
             // الاتجاه العكسي: سجّل نفس الكمية تحت دخول التصنيف التاني (البذرة مثلاً) باسم الاختيار الحالي (الحشو)،
             // عشان تقرير/رسالة البذرة يقدر يعرض "تحت عيش أسمر: كام كفتة وكام فراخ" بنفس طريقة تقرير الحشو العكسية
-            const ox = getCatEntry(otherCat, optName, '');
-            ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q);
+            if (canLink(otherCat, cat)) { const ox = getCatEntry(otherCat, optName, ''); ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q); }
           });
           // البوكس المتداخل: الاختيار ده ممكن يحمل "نوع حبة" (breadType) خاص بيه بس مش عن طريق سطر اختيار منفصل،
-          // لكن عن طريق تقسيم كميته هو نفسه على نوع الحبة (زي 2 كفتة أبيض + 1 كفتة أسمر في نفس البوكس)،
-          // فلازم نعامله كإنه "اختيار" من تصنيف تاني (بذرة) بنفس الكمية، ونربطه في الاتجاهين زي أي تصنيف تاني
+          // لكن عن طريق تقسيم كميته هو نفسه على نوع الحبة (زي 2 كفتة بلدي + 1 كفتة فينو في نفس البوكس)،
+          // فلازم نعامله كإنه "اختيار" من تصنيف نوع الحبة بنفس الكمية، ونربطه في الاتجاهين زي أي تصنيف تاني (مع احترام نفس تحكم الروابط 🔗)
           const bt = S_(r.breadType);
-          if (bt) {
-            const btCat = optNameCat.get(nk(bt));
-            if (btCat && btCat !== cat) {
-              x.byLinked.set(bt, (x.byLinked.get(bt) || 0) + q);
-              const ox = getCatEntry(btCat, bt, optNameGroupName.get(nk(bt)) || '');
-              ox.qty += q;
-              if (itemName) ox.byItem.set(itemName, (ox.byItem.get(itemName) || 0) + q);
-              ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q);
-            }
+          if (bt && cat !== BREAD_CAT) {
+            // qty وbyItem بتاعة "نوع الحبة" مصدرهم الوحيد هنا (مش ليهم سطر منفصل في الفاتورة)، فلازم يتسجلوا دايماً بغض النظر عن تحكم الروابط 🔗،
+            // اللي بيتحكم بس في ظهور بطاقة "الحشو" ← "نوع الحبة" (وبالعكس) جوه روابط 🔗 مش في العدّ نفسه
+            const ox = getCatEntry(BREAD_CAT, bt, '');
+            ox.qty += q;
+            if (itemName) ox.byItem.set(itemName, (ox.byItem.get(itemName) || 0) + q);
+            if (canLink(cat, BREAD_CAT)) x.byLinked.set(bt, (x.byLinked.get(bt) || 0) + q);
+            if (canLink(BREAD_CAT, cat)) ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q);
           }
         }
       }
@@ -4419,7 +4485,7 @@ function rpPrep() {
   const catBreakdownHtml = x => {
     const lines = [];
     if (x.byItem && x.byItem.length > 1) lines.push(x.byItem.map(bi => fmtN(bi.qty) + ' ' + esc(bi.name)).join(' · '));
-    if (x.byLinked && x.byLinked.length > 1) lines.push('🔗 ' + x.byLinked.map(bl => fmtN(bl.qty) + ' ' + esc(bl.name)).join(' · '));
+    if (x.byLinked && x.byLinked.length) lines.push('🔗 ' + x.byLinked.map(bl => fmtN(bl.qty) + ' ' + esc(bl.name)).join(' · '));
     return lines.length ? '<div class="cg-meta" style="font-size:12px;margin-top:3px">' + lines.join('<br>') + '</div>' : '';
   };
   const catCards = catNames.map(c => rpCard('تصنيف: ' + esc(c), rpTable(['الاختيار', 'الكمية'], catData[c].map(x => [esc(x.name) + catBreakdownHtml(x), '<b>' + fmtN(x.qty) + '</b>'])), null, catCopyBtn(c))).join('');
@@ -4857,7 +4923,7 @@ function toStep3() {
 }
 
 /* Builder: الأصناف من شيت Items، والاختيارات من المجموعات المربوطة بالصنف أو تصنيفه */
-const wzItems = () => (catReady('items') ? DB.items.filter(i => S_(i.name) && isOn(i.active)) : []);
+const wzItems = () => (catReady('items') ? DB.items.filter(i => S_(i.name) && isOn(i.active) && catIsActive(S_(i.category))) : []);
 const wzItem = () => (B.code ? wzItems().find(i => S_(i.code) === B.code) || null : null);
 const optKey = o => S_(o.code) || S_(o.name);
 // ربط مجموعة بصنف (Applies To = Item، Value = كود الصنف) أو بتصنيف (Category، Value = اسم التصنيف)
@@ -4938,7 +5004,7 @@ function selOpts(groups) {
         if (subKeys.length) {
           subKeys.forEach(ck => {
             const co = nest.child.opts.find(x => optKey(x) === ck);
-            if (co) out.push({ group: g.name, name: S_(o.name), price: (Number(o.price) || 0) + (Number(co.price) || 0), qty: sub[ck], bread: S_(co.name) });
+            if (co) out.push({ group: g.name, name: S_(o.name), price: (Number(o.price) || 0) + (Number(co.price) || 0), qty: sub[ck], bread: S_(co.breadType) });
           });
           return;
         }
@@ -5312,7 +5378,7 @@ async function submitOrder() {
   const btn = document.querySelector('button[onclick="submitOrder()"]');
   SUBMITTING = true; if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ…'; }
   try {
-    const res = await gsCall('append', { sheet: MAP.sales.sheet, rows: rowsOut, autoId, textCols: [sc.phone, sc.orderId].filter(Boolean) });
+    const res = await gsCall('append', { sheet: MAP.sales.sheet, rows: rowsOut, autoId, textCols: [sc.phone, sc.orderId, sc.area, sc.breadType].filter(Boolean) });
     let payErr = '';
     if (n.paid > 0 && tableOk('payments')) {
       try { await addPayment({ orderId: res.id, client: c.name, amount: n.paid, method: $('p-method').value, payDate: ymd(now), note: 'دفعة عند تسجيل الطلب' }); }
@@ -5345,6 +5411,7 @@ function toggleTheme() {
 }
 /* ───────── Google Sheets connection ───────── */
 const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache', LS_UI = 'bk_ui_pref', LS_MSGTPL = 'bk_msg_tpl';
+const LS_NAV_ORDER = 'bk_nav_order', LS_CG_ORDER = 'bk_cg_order', LS_RP_ORDER = 'bk_rp_order';
 const AUTH = { secured: false, token: '', user: null, diag: '' };
 
 /* ───────── شكل الموقع: تلقائي حسب حجم الشاشة، أو تفضيل شخصي محفوظ ───────── */
@@ -5448,10 +5515,12 @@ const TABLES = {
     { k: 'city', l: 'المدينة', req: 1, a: ['city', 'cityname', 'cities', 'town', 'المدينة', 'مدينة', 'المدن'] },
     { k: 'area', l: 'المنطقة', req: 1, a: ['area', 'areaname', 'areas', 'district', 'zone', 'المنطقة', 'منطقة', 'المناطق'] },
     { k: 'category', l: 'تصنيفات الأصناف (قائمة مستقلة في نفس الشيت)', a: ['itemcategory', 'itemcategories', 'category', 'categories', 'التصنيف', 'التصنيفات'] },
+    { k: 'categoryActive', l: 'حالة تصنيف الأصناف (نشط/معطّل، اختياري)', a: ['itemcategoryactive', 'categoryactive', 'categorystatus', 'حالة التصنيف'] },
     { k: 'breadType', l: 'أنواع الحبة (قائمة مستقلة في نفس الشيت)', a: ['graintype', 'graintypes', 'grain', 'breadtype', 'breadtypes', 'نوع الحبة', 'انواع الحبة'] },
     { k: 'payment', l: 'طرق الدفع (قائمة مستقلة في نفس الشيت)', a: ['paymentmethod', 'paymentmethods', 'payment', 'payments', 'paymenttype', 'طرق الدفع', 'طريقة الدفع'] },
     { k: 'orderSource', l: 'مصادر الطلب (قائمة مستقلة في نفس الشيت)', a: ['ordersource', 'ordersources', 'source', 'leadsource', 'مصدر الطلب', 'مصادر الطلب'] },
-    { k: 'groupCategory', l: 'تصنيف المجموعات (قائمة مستقلة في نفس الشيت)', a: ['groupcategory', 'groupcategories', 'classification', 'classifications', 'تصنيف المجموعات', 'تصنيفات المجموعات'] }
+    { k: 'groupCategory', l: 'تصنيف المجموعات (قائمة مستقلة في نفس الشيت)', a: ['groupcategory', 'groupcategories', 'classification', 'classifications', 'تصنيف المجموعات', 'تصنيفات المجموعات'] },
+    { k: 'groupCatLinks', l: 'روابط تصنيف المجموعات 🔗 (اختياري، تحكم مين يتربط بمين في تقارير التحضير)', a: ['groupcategorylinks', 'categorylinks', 'linkedcategories', 'catlinks', 'روابط التصنيف', 'روابط تصنيف المجموعات'] }
   ] },
   sales: { label: 'المبيعات (الطلبات)', hint: 'سطر لكل صنف داخل الفاتورة. الخصم والإضافة والمدفوع مرة واحدة فقط (موزعة على الأسطر) فيصح جمع الأعمدة', sheetAlias: ['sales', 'orders', 'المبيعات'], fields: [
     { k: 'date', l: 'تاريخ ووقت تسجيل الحركة (Action Date)', a: ['actiondate', 'createdat', 'timestamp', 'datetime', 'تاريخ الحركة'] },
@@ -5528,6 +5597,39 @@ const colLetter = i => { let s = '', n = i + 1; while (n > 0) { const m = (n - 1
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+// ترتيب التابات (القائمة الجانبية، وتابات صفحتي التصنيفات والخيارات/التقارير): بيتحفظ في المتصفح الحالي بس
+// (مش في الشيت)، فلو فتحت الموقع من جهاز تاني هيرجع للترتيب الافتراضي هناك. مفتاح جديد يتضاف للنظام مستقبلاً
+// بيتحط آخر القائمة تلقائي حتى لو الترتيب المحفوظ أقدم منه.
+function orderedBy(defaultKeys, lsKey) {
+  let saved = null;
+  try { saved = JSON.parse(lsGet(lsKey) || 'null'); } catch (e) {}
+  if (!Array.isArray(saved)) return defaultKeys.slice();
+  const valid = saved.filter(k => defaultKeys.includes(k));
+  defaultKeys.forEach(k => { if (!valid.includes(k)) valid.push(k); });
+  return valid;
+}
+function moveInOrder(defaultKeys, lsKey, key, dir) {
+  const arr = orderedBy(defaultKeys, lsKey);
+  const i = arr.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return arr;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  lsSet(lsKey, JSON.stringify(arr));
+  return arr;
+}
+// عناصر مجموعة "القائمة" في الشريط الجانبي (من غير "الإدارة": الإعدادات وإعدادات الأدمن، بتفضل ثابتة في الآخر دايمًا)
+const NAV_LABELS = { dashboard: 'الرئيسية', 'add-order': 'إضافة طلب', orders: 'الطلبات', collections: 'التحصيلات', customers: 'العملاء', items: 'الأصناف', catalog: 'التصنيفات والخيارات', reports: 'التقارير' };
+function applyNavOrder() {
+  const section = document.querySelector('.sidebar .sidebar-section');
+  if (!section) return;
+  const labels = section.querySelectorAll('.sidebar-label');
+  const adminLabel = labels[1]; // تسمية "الإدارة" اللي بتفصل بين المجموعتين
+  if (!adminLabel) return;
+  orderedBy(Object.keys(NAV_LABELS), LS_NAV_ORDER).forEach(tab => {
+    const el = section.querySelector('.nav-item[data-tab="' + tab + '"]');
+    if (el) section.insertBefore(el, adminLabel);
+  });
+}
 
 function loadCfg() {
   try {
@@ -6233,6 +6335,7 @@ async function doLogout() {
 async function afterAuth() {
   hideLogin();
   applyAuthUI();
+  applyNavOrder();
   if (!canOpen(CUR)) nav(['dashboard', 'add-order', 'orders', 'collections', 'customers', 'items', 'reports', 'settings'].find(canOpen));
   if (!CFG.scriptUrl) setConn('off', 'غير متصل');
   else if (AUTH.user && AUTH.user.local && !AUTH.token && AUTH.diag) setConn('err', 'غير متصل بالشيت');
@@ -6274,11 +6377,12 @@ async function startup() {
 
 /* ───────── Settings: account, users, preferences ───────── */
 function setSec(sec) {
-  ['account', 'users', 'prefs', 'messages', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
+  ['account', 'users', 'prefs', 'messages', 'taborder', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
   document.querySelectorAll('#set-nav .sn-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
   if (sec === 'users') loadUsers();
   if (sec === 'log') loadLog();
   if (sec === 'messages') renderMsgSettings();
+  if (sec === 'taborder') renderTabOrderSettings();
 }
 function onSettingsOpen() {
   const active = document.querySelector('#set-nav .sn-item.active').dataset.sec;
@@ -6740,9 +6844,21 @@ const UNIQUE = {
   options: [{ f: ['group', 'name'], l: 'اختيار بنفس الاسم في نفس المجموعة' }],
   groupOptions: [{ f: ['item', 'group'], l: 'نفس الربط' }],
   clients: [{ f: ['name'], l: 'عميل بنفس الاسم' }, { f: ['phone'], phone: 1, l: 'عميل بنفس رقم الجوال' }],
-  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }, { f: ['payment'], l: 'نفس طريقة الدفع' }, { f: ['category'], l: 'نفس التصنيف' }, { f: ['orderSource'], l: 'نفس مصدر الطلب' }],
+  data: [{ f: ['city', 'area'], l: 'نفس المدينة والمنطقة' }, { f: ['payment'], l: 'نفس طريقة الدفع' }, { f: ['category'], l: 'نفس التصنيف' }, { f: ['orderSource'], l: 'نفس مصدر الطلب' }, { f: ['groupCategory'], l: 'نفس تصنيف المجموعات' }, { f: ['breadType'], l: 'نفس نوع العجين' }],
   payments: [{ f: ['code'], l: 'دفعة بنفس الرقم' }]
 };
+// أعمدة لازم تتحفظ كنص دايمًا، عشان شيت Google ميحولهاش تلقائي لتاريخ أو رقم لو القيمة شكلها كده
+// (زي اسم منطقة "5-10" أو مجموعة اسمها رقم). بتتطبق تلقائي من appendRow/updRow من غير ما تتكرر في كل نداء.
+const TEXT_COLS = { data: ['city', 'area', 'category', 'groupCategory', 'groupCatLinks', 'payment', 'orderSource', 'breadType'], clients: ['city', 'area'] };
+const dataTextCols = keys => (TEXT_COLS.data || []).filter(k => keys.includes(k)).map(k => MAP.data.cols[k]).filter(Boolean);
+// أعمدة شيت Data اللي بتتكدس كل واحدة لوحدها (قوائم مستقلة): لما نضيف قيمة جديدة فيها، نملى أول خانة فاضية
+// في نفس العمود بدل ما نضيف صف جديد كل مرة، عشان الأعمدة تفضل مرصوصة من غير فراغات بينها (يحتاج نسخة Apps Script v15+)
+function dataPackCols() {
+  const c = MAP.data.cols || {};
+  const single = ['category', 'breadType', 'payment', 'orderSource', 'groupCategory'].map(k => c[k]).filter(Boolean);
+  const pair = (c.city && c.area) ? [[c.city, c.area]] : [];
+  return single.concat(pair);
+}
 function uniqFor(t) {
   const c = MAP[t] && MAP[t].cols;
   if (!c || !UNIQUE[t]) return [];
@@ -6767,9 +6883,41 @@ function dupBanner(id, grid, n, what, on, toggle) {
   if (n) el.innerHTML = '<span>⚠️ يوجد ' + n + ' ' + what + ' مكرر في الشيت. عدّل أو احذف المكرر ليبقى سجل واحد فقط.</span><button type="button" class="btn btn-secondary btn-sm" onclick="' + toggle + '">' + (on ? 'عرض الكل' : 'عرض المكرر فقط') + '</button>';
 }
 const CAT = { sec: 'cats', q: '' };
-const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', groupCats: 'تصنيف المجموعات', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع', orderSources: 'مصادر الطلب' };
-const SEC_MIN = { cities: 8, areas: 8, payments: 8, orderSources: 8, groupCats: 8 };
-const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], groupCats: ['data'], cities: ['data'], areas: ['data'], payments: ['data'], orderSources: ['data'] };
+const SECS = { cats: 'التصنيفات', groups: 'المجموعات', options: 'الاختيارات', links: 'الربط', groupCats: 'تصنيف المجموعات', breadTypes: 'نوع العجين', cities: 'المدن', areas: 'المناطق', payments: 'طرق الدفع', orderSources: 'مصادر الطلب' };
+const SEC_MIN = { cities: 8, areas: 8, payments: 8, orderSources: 8, groupCats: 8, breadTypes: 8 };
+// إعداد "ترتيب التابات" في صفحة الإعدادات: دالة (مش const) عشان تتأكد إن SECS/RP_TABS/NAV_LABELS
+// كلهم اتعرّفوا فعلاً وقت ما بتتنادى، مهما كان مكانها في الملف
+function tabOrderGroups() {
+  return {
+    nav: { title: 'القائمة الجانبية', labels: NAV_LABELS, ls: LS_NAV_ORDER, after: applyNavOrder },
+    cg: { title: 'تابات صفحة "التصنيفات والخيارات"', labels: SECS, ls: LS_CG_ORDER, after: () => { if (CUR === 'catalog') renderCatalog(); } },
+    rp: { title: 'تابات صفحة "التقارير"', labels: RP_TABS, ls: LS_RP_ORDER, after: () => { if (CUR === 'reports') renderReport(); } }
+  };
+}
+function toRenderList(groupId) {
+  const g = tabOrderGroups()[groupId];
+  const keys = orderedBy(Object.keys(g.labels), g.ls);
+  return keys.map((k, i) => '<div class="to-row"><span class="to-name">' + esc(g.labels[k]) + '</span><div class="to-arrows">'
+    + '<button type="button" class="btn btn-secondary btn-sm" ' + (i === 0 ? 'disabled' : '') + ' onclick="toMove(\'' + groupId + '\',\'' + k + '\',-1)" aria-label="لأعلى">▲</button>'
+    + '<button type="button" class="btn btn-secondary btn-sm" ' + (i === keys.length - 1 ? 'disabled' : '') + ' onclick="toMove(\'' + groupId + '\',\'' + k + '\',1)" aria-label="لأسفل">▼</button>'
+    + '</div></div>').join('');
+}
+function renderTabOrderSettings() {
+  Object.keys(tabOrderGroups()).forEach(id => { const el = $('to-' + id + '-list'); if (el) el.innerHTML = toRenderList(id); });
+}
+function toMove(groupId, key, dir) {
+  const g = tabOrderGroups()[groupId];
+  moveInOrder(Object.keys(g.labels), g.ls, key, dir);
+  renderTabOrderSettings();
+  g.after();
+}
+function toReset(groupId) {
+  const g = tabOrderGroups()[groupId];
+  lsDel(g.ls);
+  renderTabOrderSettings();
+  g.after();
+}
+const SEC_TABLES = { cats: [], groups: ['groups'], options: ['options', 'groups'], links: ['groupOptions', 'groups'], groupCats: ['data'], breadTypes: ['data'], cities: ['data'], areas: ['data'], payments: ['data'], orderSources: ['data'] };
 const AUTO_DEF = { items: ['ITEM', 4], groups: ['GRP', 3], options: ['OPT', 3] };
 let CG_ROWS = [], CG = null;
 
@@ -6807,7 +6955,10 @@ async function appendRow(t, vals, textKeys) {
   Object.keys(vals).forEach(k => { if (c[k]) row[c[k]] = vals[k]; });
   const payload = { sheet: MAP[t].sheet, rows: [row] };
   const uq = uniqFor(t); if (uq.length) payload.unique = uq;
-  if (textKeys) payload.textCols = textKeys.map(k => c[k]).filter(Boolean);
+  // أعمدة النص الافتراضية لهذا الجدول (زي city/area/groupCategory في Data) + أي أعمدة إضافية محددة يدويًا
+  const allTextKeys = Array.from(new Set((TEXT_COLS[t] || []).concat(textKeys || [])));
+  if (allTextKeys.length) payload.textCols = allTextKeys.map(k => c[k]).filter(Boolean);
+  if (t === 'data') payload.packCols = dataPackCols();
   const sp = AUTO_DEF[t] ? autoSpec(t) : null;
   if (sp) {
     if (srvOk()) payload.autoId = sp; else row[sp.col] = previewCode(t);
@@ -6835,13 +6986,16 @@ function dataCats() {
   DB.data.forEach(r => { const c = S_(r.category); if (c && !seen.has(nk(c))) { seen.add(nk(c)); out.push(c); } });
   return out.sort((a, b) => a.localeCompare(b, 'ar'));
 }
+// حالة تفعيل تصنيف الأصناف: من عمود Item Category Active في شيت Data؛ مفعّل افتراضياً لو العمود غير مربوط أو فاضي
+const catActiveRaw = name => { if (!MAP.data.cols.categoryActive) return ''; const r = (DB.data || []).find(x => nk(S_(x.category)) === nk(name)); return r ? S_(r.categoryActive) : ''; };
+const catIsActive = name => isOn(catActiveRaw(name));
 async function addMissingCats() {
   if (!needWrite(9)) return;
   const miss = catList().filter(c => !c.inData && c.items).map(c => c.name);
   if (!miss.length) return;
   try {
     const col = MAP.data.cols.category;
-    await gsCall('append', { sheet: MAP.data.sheet, rows: miss.map(n => ({ [col]: n })), unique: uniqFor('data') });
+    await gsCall('append', { sheet: MAP.data.sheet, rows: miss.map(n => ({ [col]: n })), unique: uniqFor('data'), textCols: dataTextCols(['category']), packCols: dataPackCols() });
     toast('تم تسجيل ' + miss.length + ' تصنيف في شيت Data');
     await reloadData(true);
   } catch (e) { toast(gsError(e)); }
@@ -6856,7 +7010,7 @@ function catList() {
     if (!map.has(k)) map.set(k, { name: k, items: 0, links: [] });
     map.get(k).links.push({ group: S_(l.group), sort: Number(l.sort) || 0 });
   });
-  map.forEach(c => c.links.sort((a, b) => a.sort - b.sort));
+  map.forEach(c => { c.links.sort((a, b) => a.sort - b.sort); c.active = catIsActive(c.name); });
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
 }
 
@@ -6919,8 +7073,8 @@ const cgEmpty = (icon, t, d) => '<div class="empty-state"><div class="es-icon">'
 function renderCatalog() {
   const body = $('cg-body');
   if (!body) return;
-  $('cg-tabs').innerHTML = Object.keys(SECS).map(k => '<button type="button" class="seg-btn' + (CAT.sec === k ? ' active' : '') + '" onclick="catSec(\'' + k + '\')">' + SECS[k] + '</button>').join('');
-  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', groupCats: '+ إضافة تصنيف', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع', orderSources: '+ إضافة مصدر' }[CAT.sec];
+  $('cg-tabs').innerHTML = orderedBy(Object.keys(SECS), LS_CG_ORDER).map(k => '<button type="button" class="seg-btn' + (CAT.sec === k ? ' active' : '') + '" onclick="catSec(\'' + k + '\')">' + SECS[k] + '</button>').join('');
+  const addLabel = { cats: '+ إضافة تصنيف', groups: '+ إضافة مجموعة', options: '+ إضافة اختيار', links: '+ إضافة ربط', groupCats: '+ إضافة تصنيف', breadTypes: '+ إضافة نوع', cities: '+ إضافة مدينة', areas: '+ إضافة منطقة', payments: '+ إضافة طريقة دفع', orderSources: '+ إضافة مصدر' }[CAT.sec];
   $('cg-add').textContent = addLabel;
   $('cg-warn').hidden = srvOk(SEC_MIN[CAT.sec] || 6) || !CFG.scriptUrl || !DB;
   CG_ROWS = [];
@@ -6946,6 +7100,11 @@ function renderCatalog() {
     $('cg-sub').textContent = 'تصنيف المجموعات من شيت Data';
     return;
   }
+  if (CAT.sec === 'breadTypes' && !MAP.data.cols.breadType) {
+    body.innerHTML = cgEmpty('🍞', 'عمود نوع العجين غير مربوط', esc('أضف عموداً باسم «Grain Type» في الصف الأول من شيت ' + MAP.data.sheet + '، ثم من إعدادات الأدمن اضغط «فحص الاتصال» و«حفظ للجميع».'));
+    $('cg-sub').textContent = 'نوع العجين من شيت Data';
+    return;
+  }
   const q = CAT.q.trim().toLowerCase(), hit = s => !q || s.toLowerCase().includes(q);
   let html = '';
   if (CAT.sec === 'cats') {
@@ -6954,7 +7113,7 @@ function renderCatalog() {
     const missingCats = dataCats() ? catList().filter(c => !c.inData && c.items) : [];
     html = (missingCats.length && can('catalog', 'a') ? '<div class="setup-banner"><span>فيه ' + missingCats.length + ' تصنيف مستخدم في الأصناف ومش مسجل في شيت Data، فمش هيظهر في قائمة التصنيفات وانت بتضيف صنف.</span><button type="button" class="btn btn-primary btn-sm" onclick="addMissingCats()">سجّلهم في Data</button></div>' : '') + (list.length ? '<div class="cg-grid">' + list.map(c => {
       CG_ROWS.push(c); const i = CG_ROWS.length - 1;
-      return '<div class="cg-card"><div class="cg-card-h"><div><div class="cg-name">' + esc(c.name) + '</div><div class="cg-meta">' + c.items + ' صنف' + (dataCats() && !c.inData ? ' · <span class="rp-due">غير مسجل في Data</span>' : '') + '</div></div><div class="cg-act">' + cgActions(i) + '</div></div>' +
+      return '<div class="cg-card"' + (MAP.data.cols.categoryActive && !c.active ? ' style="opacity:.55"' : '') + '><div class="cg-card-h"><div><div class="cg-name">' + esc(c.name) + (MAP.data.cols.categoryActive ? ' <span class="pill ' + (c.active ? 'pill-ready' : 'pill-done') + '">' + (c.active ? 'مفعّل' : 'معطّل') + '</span>' : '') + '</div><div class="cg-meta">' + c.items + ' صنف' + (dataCats() && !c.inData ? ' · <span class="rp-due">غير مسجل في Data</span>' : '') + '</div></div><div class="cg-act">' + cgActions(i) + '</div></div>' +
         '<div class="cg-chips">' + (c.links.length ? c.links.map((l, n) => '<span class="chip"><b>' + (n + 1) + '</b> ' + esc(gName(l.group)) + '</span>').join('') : '<span class="cg-meta">بدون مجموعات اختيارات</span>') + '</div></div>';
     }).join('') + '</div>' : cgEmpty('🏷️', 'لا توجد تصنيفات', dataCats() ? 'أضف أول تصنيف، ويُحفظ في شيت Data (عمود Item Category).' : 'أضف تصنيفاً، أو اربط عمود Item Category في شيت Data من إعدادات الأدمن لتُحفظ التصنيفات هناك.'));
   } else if (CAT.sec === 'groups') {
@@ -7013,7 +7172,15 @@ function renderCatalog() {
     html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>تصنيف المجموعات</th><th>المجموعات</th><th>إجراء</th></tr></thead><tbody>' + list.map(p => {
       CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
       return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
-    }).join('') + '</tbody></table></div></div>' : cgEmpty('🏷️', all.length ? 'لا نتائج مطابقة' : 'لا توجد تصنيفات مجموعات', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف تصنيفات زي حشو، بذرة، تسوية. تُحفظ في شيت Data وتُستخدم لتجميع تقارير المجموعات.');
+    }).join('') + '</tbody></table></div></div>' : cgEmpty('🏷️', all.length ? 'لا نتائج مطابقة' : 'لا توجد تصنيفات مجموعات', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف تصنيفات زي حشو، عجين، تسوية. تُحفظ في شيت Data وتُستخدم لتجميع تقارير المجموعات.');
+  } else if (CAT.sec === 'breadTypes') {
+    const all = breadTypes() || [], list = all.filter(p => hit(p));
+    const used = {}; (DB.options || []).forEach(o => { const v = S_(o.breadType); if (v) used[nk(v)] = (used[nk(v)] || 0) + 1; });
+    $('cg-sub').textContent = all.length + ' نوع';
+    html = list.length ? '<div class="data-table-wrap"><div class="table-scroll"><table class="data-table"><thead><tr><th>نوع العجين</th><th>الاختيارات</th><th>إجراء</th></tr></thead><tbody>' + list.map(p => {
+      CG_ROWS.push({ name: p, used: used[nk(p)] || 0 }); const i = CG_ROWS.length - 1;
+      return '<tr><td><strong>' + esc(p) + '</strong></td><td>' + (used[nk(p)] || 0) + '</td><td><div class="actions-cell">' + cgActions(i) + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>' : cgEmpty('🍞', all.length ? 'لا نتائج مطابقة' : 'لا توجد أنواع عجين', all.length ? 'جرّب كلمة بحث أخرى' : 'أضف أنواع زي بلدي، فينو، عجين حلو. تُحفظ في شيت Data (عمود Grain Type) وتظهر كخيار لنوع الحبة عند إضافة اختيار.');
   } else {
     const codes = new Set((DB.items || []).map(i => S_(i.code)));
     const list = DB.groupOptions.filter(l => { const itm = (DB.items || []).find(i => S_(i.code) === S_(l.item)); return hit(l.item + ' ' + (itm ? S_(itm.name) : '') + ' ' + gName(l.group)); });
@@ -7066,6 +7233,9 @@ async function cgDelete(sec, row) {
     } else if (sec === 'groupCats') {
       if (row.used) { toast('لا يمكن حذف تصنيف مستخدم في مجموعات. غيّر تصنيف هذه المجموعات أولاً'); return; }
       for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', { groupCategory: '' }) });
+    } else if (sec === 'breadTypes') {
+      if (row.used) { toast('لا يمكن حذف نوع مستخدم في اختيارات. غيّر نوع هذه الاختيارات أولاً'); return; }
+      for (const v of rawVals('data', 'breadType', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { breadType: v }), values: mapVals('data', { breadType: '' }) });
     } else if (sec === 'cities') {
       if (row.clients) { toast('لا يمكن حذف مدينة بها عملاء. انقل عملاءها لمدينة أخرى أولاً'); return; }
       for (const v of rawVals('data', 'city', row.name)) await dataDel({ city: v });
@@ -7103,6 +7273,7 @@ function openCg(sec, row, pre) {
     const cur = {}; if (!isNew) row.links.forEach(l => { cur[l.group] = l.sort; });
     const maxSort = Math.max(0, ...Object.values(cur));
     f = fld('cg-name', 'اسم التصنيف <span class="req">*</span>', '<input type="text" id="cg-name" autocomplete="off" value="' + esc(isNew ? '' : row.name) + '">', true) +
+      (MAP.data.cols.categoryActive && MAP.data.cols.category ? fld('cg-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cg-active"' + (isNew || catIsActive(row.name) ? ' checked' : '') + '> تصنيف مفعّل</label>') : '<div class="hint" style="grid-column:1/-1">لإضافة إلغاء تفعيل للتصنيف، أضف عموداً باسم «Item Category Active» في الصف الأول من شيت ' + esc(MAP.data.sheet) + (can('admin', 'e') ? '، ثم <a href="#" onclick="quickAutoMap(\'data\');return false">اربطه تلقائياً الآن</a>.' : '، واطلب من الأدمن ربطه.') + '</div>') +
       '<div class="form-group" style="grid-column:1/-1"><label>المجموعات المرتبطة بهذا التصنيف (اختياري، بترتيب ظهورها)</label><div class="cg-checks" id="cg-checks">' +
       ((DB.groups || []).length ? DB.groups.map((g, n) => { const on = S_(g.code) in cur; return '<label class="cg-check"><input type="checkbox" data-g="' + esc(g.code) + '"' + (on ? ' checked' : '') + '> <span>' + esc(S_(g.name) || g.code) + '</span><input type="number" class="cg-sort" min="1" step="1" aria-label="الترتيب" value="' + (on ? cur[S_(g.code)] || n + 1 : n + 1 + maxSort) + '"></label>'; }).join('') : '<div class="cg-meta">لا توجد مجموعات بعد (اختياري).</div>') + '</div></div>';
   } else if (sec === 'groups') {
@@ -7150,7 +7321,16 @@ function openCg(sec, row, pre) {
   } else if (sec === 'groupCats') {
     if (!MAP.data.cols.groupCategory) { toast('اربط عمود تصنيف المجموعات في شيت Data أولاً'); return; }
     title = isNew ? 'إضافة تصنيف مجموعات' : 'تعديل تصنيف المجموعات';
-    f = fld('cg-gcname', 'تصنيف المجموعات <span class="req">*</span>', '<input type="text" id="cg-gcname" autocomplete="off" placeholder="مثال: حشو" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">المجموعات التي تستخدم هذا التصنيف تتحدث لاسمه الجديد تلقائياً.</div>');
+    const linkTargets = (groupCategories() || []).filter(c => isNew || nk(c) !== nk(row.name)).concat([BREAD_CAT]);
+    const curLinks = isNew ? null : groupCatLinkSet(row.name); // null = مرتبط بالكل (الوضع الافتراضي)
+    f = fld('cg-gcname', 'تصنيف المجموعات <span class="req">*</span>', '<input type="text" id="cg-gcname" autocomplete="off" placeholder="مثال: حشو" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">المجموعات التي تستخدم هذا التصنيف تتحدث لاسمه الجديد تلقائياً.</div>') +
+      (MAP.data.cols.groupCatLinks ? '<div class="form-group" style="grid-column:1/-1"><label>يظهر كرابط 🔗 تحت أي تصنيفات تانية في تقرير التحضير (سيبها كلها مفعّلة لو عايز الوضع الطبيعي)</label><div class="cg-checks" id="cg-link-checks">' +
+        (linkTargets.length ? linkTargets.map(c => '<label class="cg-check"><input type="checkbox" data-lc="' + esc(c) + '"' + (curLinks === null || curLinks.has(nk(c)) ? ' checked' : '') + '> <span>' + esc(c) + '</span></label>').join('') : '<div class="cg-meta">لا توجد تصنيفات تانية بعد.</div>') +
+        '</div></div>' : '<div class="hint" style="grid-column:1/-1">لإضافة تحكم الروابط 🔗 (مين يتربط بمين)، أضف عموداً باسم «Group Category Links» في الصف الأول من شيت ' + esc(MAP.data.sheet) + (can('admin', 'e') ? '، ثم <a href="#" onclick="quickAutoMap(\'data\');return false">اربطه تلقائياً الآن</a>.' : '، واطلب من الأدمن ربطه.') + '</div>');
+  } else if (sec === 'breadTypes') {
+    if (!MAP.data.cols.breadType) { toast('اربط عمود نوع العجين (Grain Type) في شيت Data أولاً'); return; }
+    title = isNew ? 'إضافة نوع عجين' : 'تعديل نوع العجين';
+    f = fld('cg-btname', 'نوع العجين <span class="req">*</span>', '<input type="text" id="cg-btname" autocomplete="off" placeholder="مثال: بلدي" value="' + esc(isNew ? '' : row.name) + '">', true) + (isNew || !row.used ? '' : '<div class="hint" style="grid-column:1/-1">الاختيارات القديمة تظل مسجلة بالاسم القديم.</div>');
   } else {
     title = isNew ? 'إضافة ربط' : 'تعديل الربط';
     const v = row || {}, cats = catList().map(c => c.name), codes = (DB.items || []).map(i => S_(i.code));
@@ -7161,7 +7341,7 @@ function openCg(sec, row, pre) {
   $('cg-modal-body').innerHTML = '<div class="m-head"><div><h2 id="cg-title">' + title + '</h2><p>يُحفظ مباشرة في الشيت</p></div></div><div class="m-body"><div class="form-grid">' + f + '</div><div class="login-err" id="cg-err" role="alert"></div></div>' +
     '<div class="m-foot"><button class="btn btn-primary" id="cg-save" onclick="saveCg()">حفظ</button><button class="btn btn-secondary" onclick="closeCg()">إلغاء</button></div>';
   $('cg-modal').hidden = false;
-  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-osname') || $('cg-gcname') || $('cg-item'); if (el) el.focus(); }, 50);
+  setTimeout(() => { const el = $('cg-name') || $('cg-gname') || $('cg-oname') || $('cg-cname') || $('cg-aname') || $('cg-pname') || $('cg-osname') || $('cg-gcname') || $('cg-btname') || $('cg-item'); if (el) el.focus(); }, 50);
 }
 // تصنيف المجموعات من شيت Data (عمود Group Category)؛ null لو العمود غير مربوط
 function groupCategories() {
@@ -7170,6 +7350,14 @@ function groupCategories() {
   DB.data.forEach(r => { const b = S_(r.groupCategory); if (b && !seen.has(nk(b))) { seen.add(nk(b)); out.push(b); } });
   return out.sort((a, b) => a.localeCompare(b, 'ar'));
 }
+// اسم ثابت لـ"نوع الحبة" كتصنيف افتراضي في التقرير (مش مجموعة حقيقية بتصنيف — نوع الحبة قايمة مستقلة من تاب «نوع العجين»)
+const BREAD_CAT = 'نوع الحبة';
+// روابط 🔗 تصنيف المجموعات: لو العمود مش مربوط أو القيمة فاضية يبقى الوضع الافتراضي (مرتبط بكل التصنيفات التانية، زي ما كان دايماً)
+// لو فيها قيمة (قايمة أسماء مفصولة بفاصلة) يبقى التصنيف ده مرتبط بس بالتصنيفات المكتوبة
+const groupCatLinksRaw = name => { if (!MAP.data.cols.groupCatLinks) return ''; const r = (DB.data || []).find(x => nk(S_(x.groupCategory)) === nk(name)); return r ? S_(r.groupCatLinks) : ''; };
+const groupCatLinkSet = name => { const raw = groupCatLinksRaw(name); if (!raw) return null; return new Set(raw.split(',').map(s => nk(s.trim())).filter(Boolean)); };
+// هل تصنيف "from" يسمح بظهور قيم تصنيف "to" كروابط 🔗 تحت بطاقته في تقرير التحضير؟ (كل تصنيف بيتحكم في روابطه هو بس، مش بالعكس)
+const canLink = (from, to) => { if (nk(from) === nk(to)) return false; const set = groupCatLinkSet(from); return set === null ? true : set.has(nk(to)); };
 function groupCatSelect(cur) {
   const list = groupCategories();
   if (!list) return '<select id="cg-gcat" disabled><option>العمود غير مربوط</option></select>';
@@ -7228,13 +7416,21 @@ async function saveCg() {
       document.querySelectorAll('#cg-checks input[data-g]').forEach(c => { if (c.checked) want[c.dataset.g] = Number(c.parentElement.querySelector('.cg-sort').value) || 1; });
       const inData = !!dataCats();
       if (isNew && !inData && !Object.keys(want).length) return fail('اختر مجموعة واحدة على الأقل ليُحفظ التصنيف في الشيت، أو اربط عمود Item Category في شيت Data');
+      const hasActiveCol = !!(MAP.data.cols.categoryActive && MAP.data.cols.category), activeEl = hasActiveCol ? $('cg-active') : null;
       let item = isNew ? name : row.name;
-      if (inData && (isNew || !row.inData)) await appendRow('data', { category: name });
+      if (inData && (isNew || !row.inData)) {
+        const catVals = { category: name };
+        if (activeEl) catVals.categoryActive = activeValue(activeEl.checked, 'data');
+        await appendRow('data', catVals);
+      }
       if (!isNew && name !== row.name) {
-        if (inData && row.inData) for (const v of rawVals('data', 'category', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { category: v }), values: mapVals('data', { category: name }), unique: uniqFor('data') });
+        if (inData && row.inData) for (const v of rawVals('data', 'category', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { category: v }), values: Object.assign(mapVals('data', { category: name }), activeEl ? mapVals('data', { categoryActive: activeValue(activeEl.checked, 'data') }) : {}), unique: uniqFor('data'), textCols: dataTextCols(['category']) });
         if (row.items && MAP.items.cols.category) await gsCall('update', { sheet: MAP.items.sheet, match: { [MAP.items.cols.category]: row.name }, values: { [MAP.items.cols.category]: name } });
         if (row.links.length) await updRow('groupOptions', { item: row.name }, { item: name });
         item = name;
+      } else if (!isNew && inData && row.inData && activeEl) {
+        const newActive = activeValue(activeEl.checked, 'data');
+        if (catActiveRaw(row.name) !== newActive) for (const v of rawVals('data', 'category', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { category: v }), values: mapVals('data', { categoryActive: newActive }) });
       }
       if (!catReady('groupOptions') || !catReady('groups')) { /* لا ربط بمجموعات */ } else {
       const cur = {}; (isNew ? [] : row.links).forEach(l => { cur[l.group] = l.sort; });
@@ -7282,10 +7478,23 @@ async function saveCg() {
       const name = $('cg-gcname').value.trim();
       if (!name) return fail('أدخل تصنيف المجموعات');
       if ((groupCategories() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('هذا التصنيف موجود بالفعل');
-      if (isNew) await appendRow('data', { groupCategory: name });
-      else if (name !== row.name) {
-        for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', { groupCategory: name }), unique: uniqFor('data') });
-        if (row.used && MAP.groups.cols.groupCategory) for (const v of rawVals('groups', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.groups.sheet, match: { [MAP.groups.cols.groupCategory]: v }, values: { [MAP.groups.cols.groupCategory]: name } });
+      // الروابط 🔗: لو كل الصناديق مفعّلة (أو مفيش صناديق) نسيب القيمة فاضية (= الوضع الافتراضي: مرتبط بالكل)، غير كده نسجّل بس المختارة
+      let links = '';
+      if (MAP.data.cols.groupCatLinks) {
+        const boxes = Array.from(document.querySelectorAll('#cg-link-checks input[data-lc]'));
+        const checked = boxes.filter(b => b.checked).map(b => b.dataset.lc);
+        if (boxes.length && checked.length < boxes.length) links = checked.join(', ');
+      }
+      if (isNew) await appendRow('data', { groupCategory: name, groupCatLinks: links });
+      else {
+        const linksChanged = MAP.data.cols.groupCatLinks && links !== groupCatLinksRaw(row.name);
+        if (name !== row.name) {
+          const vals = { groupCategory: name }; if (MAP.data.cols.groupCatLinks) vals.groupCatLinks = links;
+          for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', vals), unique: uniqFor('data'), textCols: dataTextCols(['groupCategory']) });
+          if (row.used && MAP.groups.cols.groupCategory) for (const v of rawVals('groups', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.groups.sheet, match: { [MAP.groups.cols.groupCategory]: v }, values: { [MAP.groups.cols.groupCategory]: name } });
+        } else if (linksChanged) {
+          for (const v of rawVals('data', 'groupCategory', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { groupCategory: v }), values: mapVals('data', { groupCatLinks: links }) });
+        }
       }
     } else if (sec === 'cities') {
       const name = $('cg-cname').value.trim();
@@ -7294,8 +7503,8 @@ async function saveCg() {
       if (isNew) await appendRow('data', { city: name, area: '' });
       else if (name !== row.name) {
         if (row.clients && !can('customers', 'e')) return fail('تغيير اسم مدينة بها عملاء يحتاج صلاحية تعديل العملاء');
-        for (const v of rawVals('data', 'city', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: v }), values: mapVals('data', { city: name }), unique: uniqFor('data') });
-        if (clientCityOk()) for (const v of rawVals('clients', 'city', row.name)) await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', { city: v }), values: mapVals('clients', { city: name }) });
+        for (const v of rawVals('data', 'city', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: v }), values: mapVals('data', { city: name }), unique: uniqFor('data'), textCols: dataTextCols(['city']) });
+        if (clientCityOk()) for (const v of rawVals('clients', 'city', row.name)) await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', { city: v }), values: mapVals('clients', { city: name }), textCols: [MAP.clients.cols.city].filter(Boolean) });
       }
     } else if (sec === 'areas') {
       const city = $('cg-acity').value, name = $('cg-aname').value.trim();
@@ -7304,25 +7513,34 @@ async function saveCg() {
       if (areaRows().some(a => a.city === city && nk(a.area) === nk(name) && (isNew || !(a.city === row.city && a.area === row.area)))) return fail('هذه المنطقة موجودة بالفعل في المدينة');
       if (isNew) {
         const ph = DB.data.filter(x => S_(x.city) === city && !S_(x.area));
-        if (ph.length === 1) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: ph[0].city, area: ph[0].area }), values: mapVals('data', { area: name }), unique: uniqFor('data') });
+        if (ph.length === 1) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: ph[0].city, area: ph[0].area }), values: mapVals('data', { area: name }), unique: uniqFor('data'), textCols: dataTextCols(['area']) });
         else await appendRow('data', { city, area: name });
       } else if (name !== row.area) {
         if (row.clients && !can('customers', 'e')) return fail('تغيير اسم منطقة بها عملاء يحتاج صلاحية تعديل العملاء');
-        for (const p of rawPairs('data', row.city, row.area)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: p[0], area: p[1] }), values: mapVals('data', { area: name }), unique: uniqFor('data') });
-        if (clientAreaOk()) for (const k of clientAreaKeys(row)) await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', k), values: mapVals('clients', { area: name }) });
+        for (const p of rawPairs('data', row.city, row.area)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { city: p[0], area: p[1] }), values: mapVals('data', { area: name }), unique: uniqFor('data'), textCols: dataTextCols(['area']) });
+        if (clientAreaOk()) for (const k of clientAreaKeys(row)) await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', k), values: mapVals('clients', { area: name }), textCols: [MAP.clients.cols.area].filter(Boolean) });
       }
     } else if (sec === 'payments') {
       const name = $('cg-pname').value.trim();
       if (!name) return fail('أدخل طريقة الدفع');
       if ((payMethods() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('طريقة الدفع موجودة بالفعل');
       if (isNew) await appendRow('data', { payment: name });
-      else if (name !== row.name) for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: name }), unique: uniqFor('data') });
+      else if (name !== row.name) for (const v of rawVals('data', 'payment', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { payment: v }), values: mapVals('data', { payment: name }), unique: uniqFor('data'), textCols: dataTextCols(['payment']) });
     } else if (sec === 'orderSources') {
       const name = $('cg-osname').value.trim();
       if (!name) return fail('أدخل مصدر الطلب');
       if ((orderSources() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('مصدر الطلب موجود بالفعل');
       if (isNew) await appendRow('data', { orderSource: name });
-      else if (name !== row.name) for (const v of rawVals('data', 'orderSource', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { orderSource: v }), values: mapVals('data', { orderSource: name }), unique: uniqFor('data') });
+      else if (name !== row.name) for (const v of rawVals('data', 'orderSource', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { orderSource: v }), values: mapVals('data', { orderSource: name }), unique: uniqFor('data'), textCols: dataTextCols(['orderSource']) });
+    } else if (sec === 'breadTypes') {
+      const name = $('cg-btname').value.trim();
+      if (!name) return fail('أدخل نوع العجين');
+      if ((breadTypes() || []).some(p => nk(p) === nk(name) && (isNew || p !== row.name))) return fail('هذا النوع موجود بالفعل');
+      if (isNew) await appendRow('data', { breadType: name });
+      else if (name !== row.name) {
+        for (const v of rawVals('data', 'breadType', row.name)) await gsCall('update', { sheet: MAP.data.sheet, match: matchOf('data', { breadType: v }), values: mapVals('data', { breadType: name }), unique: uniqFor('data'), textCols: dataTextCols(['breadType']) });
+        if (row.used && MAP.options.cols.breadType) for (const v of rawVals('options', 'breadType', row.name)) await gsCall('update', { sheet: MAP.options.sheet, match: { [MAP.options.cols.breadType]: v }, values: { [MAP.options.cols.breadType]: name } });
+      }
     } else {
       const item = $('cg-item').value.trim(), group = $('cg-group').value;
       if (!item) return fail('أدخل التصنيف أو كود الصنف');
@@ -7543,7 +7761,7 @@ async function saveCustomer() {
     if (isNew) await appendRow('clients', vals, ['phone']);
     else {
       const keys = { name: row.name, phone: row.phone };
-      await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', keys), values: mapVals('clients', vals), textCols: [c.phone], unique: uniqFor('clients') });
+      await gsCall('update', { sheet: MAP.clients.sheet, match: matchOf('clients', keys), values: mapVals('clients', vals), textCols: [c.phone, c.city, c.area].filter(Boolean), unique: uniqFor('clients') });
     }
     closeCustomer();
     toast(isNew ? 'تمت إضافة العميل' : 'تم حفظ العميل');
