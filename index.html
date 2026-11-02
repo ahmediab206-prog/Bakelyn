@@ -1701,6 +1701,16 @@ body.o-dragging .col-body { min-height: 120px; }
 .b-orow-nm { font-weight: 700; font-size: 14.5px; }
 .b-orow-sub { font-size: 12px; color: var(--fg-muted); font-weight: 500; margin-top: 2px; }
 .b-orow .oq button:disabled { opacity: .35; cursor: not-allowed; }
+/* تقسيم فرعي تحت اختيار بكمية (زي توزيع البذرة على كمية الحشو داخل صندوق) */
+.b-nest { margin: 6px 0 10px; padding: 10px 12px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: 10px; }
+.b-nest-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; }
+.b-nest-rows { display: flex; flex-direction: column; gap: 6px; }
+.b-nest-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.b-nest-nm { font-size: 13.5px; font-weight: 600; }
+.b-nest-row.on .b-nest-nm { color: var(--brand-dark); font-weight: 700; }
+.b-nest-bar { margin-top: 8px; font-size: 11.5px; font-weight: 700; text-align: center; border-radius: 999px; padding: 4px 8px; background: var(--border); color: var(--fg-muted); }
+.b-nest-bar.ok { background: var(--brand-light); color: var(--brand-dark); }
+.b-nest-bar.over { background: #FEE2E2; color: #B91C1C; }
 .pay-list, .pay-form { margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
 .pay-h { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .pay-row { display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; font-size: 12.5px; padding: 5px 0; border-top: 1px dashed var(--border); color: var(--fg-muted); }
@@ -4043,10 +4053,23 @@ const MSG_TPL_DEFAULT = {
   items: { header: '📦 الأصناف {الفترة}\n', line: '>> {الكمية} - {الصنف}' },
   options: { header: '🧩 الاختيارات {الفترة}\n', line: '>> {الكمية} - {الاختيار} ({المجموعة})' }
 };
+// شكل افتراضي لأي تصنيف مجموعات (بذرة، حشو، ...) — قائمة التصنيفات ديناميكية من شيت Data فمفيش شكل افتراضي لكل واحد بالاسم،
+// وبيتظبط تلقائياً باسم التصنيف نفسه عبر {التصنيف}
+const CAT_TPL_DEFAULT = { header: '🧺 إجمالي {التصنيف} {الفترة}\n', line: '>> {الكمية} - {الاختيار}{التفصيل}{تفصيل مرتبط}' };
+function catTpl(name) { return (MSG_TPL.cats && MSG_TPL.cats[name]) || CAT_TPL_DEFAULT; }
+// groupId ممكن يكون bread/items/options الثابتين، أو 'cat:اسم التصنيف' لأي تصنيف مجموعات ديناميكي
+const isCatGroup = g => typeof g === 'string' && g.indexOf('cat:') === 0;
+const catNameOf = g => g.slice(4);
+function tplFor(g) { return isCatGroup(g) ? catTpl(catNameOf(g)) : (MSG_TPL[g] || MSG_TPL_DEFAULT[g]); }
+function msgCatList() { return groupCategories() || []; }
+function msgGroupDefs() { return [['bread', 'أنواع الحبة'], ['items', 'الأصناف'], ['options', 'الاختيارات']].concat(msgCatList().map(c => ['cat:' + c, c])); }
+function msgLineTokens(g) { return isCatGroup(g) ? [['{الاختيار}', 'اسم الاختيار'], ['{المجموعة}', 'اسم المجموعة اللي الاختيار تابع لها'], ['{التفصيل}', 'تفصيل الكمية حسب الصنف اللي اتضافت معاه (لو أكتر من صنف واحد)'], ['{تفصيل مرتبط}', 'تفصيل الكمية حسب اختيار تصنيف تاني اتاخد معاه في نفس الصنف (زي نوع العيش مع الحشو في نفس البوكس)']] : MSG_GROUPS[g].lineTokens; }
+function msgRowsFor(g) { return isCatGroup(g) ? ((RP_PREP_DATA.cats && RP_PREP_DATA.cats[catNameOf(g)]) || []) : ((RP_PREP_DATA && RP_PREP_DATA[g]) || []); }
+function msgSampleFor(g) { return isCatGroup(g) ? MSG_SAMPLE_ROWS.options : MSG_SAMPLE_ROWS[g]; }
 // بيدمج أي شكل محفوظ (من الشيت أو من الجهاز) مع الشكل الافتراضي، عشان لو مجموعة جديدة اتضافت مستقبلاً يبقى ليها قيمة دايمًا
 function mergeMsgTpl(o) {
   o = o || {};
-  return { bread: Object.assign({}, MSG_TPL_DEFAULT.bread, o.bread), items: Object.assign({}, MSG_TPL_DEFAULT.items, o.items), options: Object.assign({}, MSG_TPL_DEFAULT.options, o.options) };
+  return { bread: Object.assign({}, MSG_TPL_DEFAULT.bread, o.bread), items: Object.assign({}, MSG_TPL_DEFAULT.items, o.items), options: Object.assign({}, MSG_TPL_DEFAULT.options, o.options), cats: Object.assign({}, o.cats) };
 }
 function loadMsgTpl() {
   try { const s = lsGet(LS_MSGTPL); if (s) return mergeMsgTpl(JSON.parse(s)); } catch (e) {}
@@ -4059,7 +4082,7 @@ let MSG_FOCUS_FIELD = 'msg-header';
 const MSG_SAMPLE_ROWS = {
   bread: [{ name: 'كور - ٢٢ جم', qty: 12 }, { name: 'فطير مينيز', qty: 5 }],
   items: [{ name: 'كرواسون زبدة', qty: 8 }, { name: 'فينو', qty: 3 }],
-  options: [{ name: 'بالجبنة', qty: 4, group: 'الحشو' }, { name: 'سادة', qty: 2, group: 'الحشو' }]
+  options: [{ name: 'بالجبنة', qty: 4, group: 'الحشو', byItem: [{ name: 'كرواسون زبدة', qty: 3 }, { name: 'فينو', qty: 1 }], byLinked: [{ name: 'عيش أسمر', qty: 3 }, { name: 'عيش أبيض', qty: 1 }] }, { name: 'سادة', qty: 2, group: 'الحشو' }]
 };
 // بتستبدل كل مفاتيح literal الموجودة في str بقيمتها (بحث واستبدال نصي بسيط)، وقبلها بتحل أي عملية حسابية
 // مكتوبة جوه قوسين معقوصين زي {اجمالي الكمية+1} أو {الكمية*2} — لو الاسم قبل العلامة مش بيانة رقمية معروفة بتتسيب زي ما هي
@@ -4100,23 +4123,33 @@ function msgHeaderData(rows) {
   };
 }
 function msgLineNumerics(r) { return { 'الكمية': Number(r.qty) || 0 }; }
+// تفصيل الكمية حسب الصنف (بيظهر بس لو الاختيار ده اتكرر في أكتر من صنف مختلف، وإلا التفصيل بيبقى نفس الإجمالي فمفيش داعي نكرره)
+function fmtBreakdownLines(byItem, bullet) {
+  if (!byItem || byItem.length < 2) return '';
+  return '\n' + byItem.map(x => '   ' + (bullet || '•') + ' ' + fmtN(x.qty) + ' ' + x.name).join('\n');
+}
 function msgLineData(groupId, r) {
   const qtyTxt = fmtN(Number(r.qty) || 0);
   if (groupId === 'items') return { '{الكمية}': qtyTxt, '{الصنف}': r.name };
-  if (groupId === 'options') return { '{الكمية}': qtyTxt, '{الاختيار}': r.name, '{المجموعة}': r.group || '—' };
+  if (groupId === 'options' || isCatGroup(groupId)) {
+    const d = { '{الكمية}': qtyTxt, '{الاختيار}': r.name, '{المجموعة}': r.group || '—' };
+    if (isCatGroup(groupId)) { d['{التفصيل}'] = fmtBreakdownLines(r.byItem); d['{تفصيل مرتبط}'] = fmtBreakdownLines(r.byLinked, '🔗'); }
+    return d;
+  }
   return { '{الكمية}': qtyTxt, '{النوع}': r.name };
 }
 function renderGroupMsgWith(groupId, rows, tpl) {
   if (!rows || !rows.length) return '';
-  const headerLines = applyTokens(tpl.header, msgHeaderData(rows), msgHeaderNumerics(rows)).split('\n');
+  const extra = isCatGroup(groupId) ? { '{التصنيف}': catNameOf(groupId) } : {};
+  const headerLines = applyTokens(tpl.header, Object.assign({}, msgHeaderData(rows), extra), msgHeaderNumerics(rows)).split('\n');
   const lineLines = rows.map(r => applyTokens(tpl.line, msgLineData(groupId, r), msgLineNumerics(r)));
   return headerLines.concat(lineLines).join('\n');
 }
 function renderGroupMsg(groupId, rows) {
-  return renderGroupMsgWith(groupId, rows, MSG_TPL[groupId] || MSG_TPL_DEFAULT[groupId]);
+  return renderGroupMsgWith(groupId, rows, tplFor(groupId));
 }
 function copyPrepGroup(groupId) {
-  const rows = (RP_PREP_DATA && RP_PREP_DATA[groupId]) || [];
+  const rows = msgRowsFor(groupId);
   const text = renderGroupMsg(groupId, rows);
   if (!text) { toast('لا توجد بيانات للنسخ'); return; }
   copyListText(text);
@@ -4130,9 +4163,17 @@ function msgSelectGroup(g) {
   document.querySelectorAll('#msg-group-seg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === g));
   renderMsgSettings();
 }
+// شريط اختيار القائمة: الثلاثة الثابتين + زرار لكل تصنيف مجموعات معرّف (بذرة، حشو، ...) — بيتبني من جديد كل مرة
+// عشان لو اتضاف تصنيف جديد من تاب «تصنيف المجموعات» يظهر هنا على طول
+function renderMsgGroupSeg() {
+  const defs = msgGroupDefs();
+  if (!defs.some(d => d[0] === MSG_SEL_GROUP)) MSG_SEL_GROUP = 'bread';
+  $('msg-group-seg').innerHTML = defs.map(d => '<button type="button" class="seg-btn' + (MSG_SEL_GROUP === d[0] ? ' active' : '') + '" data-v="' + esc(d[0]) + '" onclick="msgSelectGroup(this.dataset.v)">' + esc(d[1]) + '</button>').join('');
+}
 function renderMsgSettings() {
+  renderMsgGroupSeg();
   const g = MSG_SEL_GROUP;
-  const tpl = MSG_TPL[g] || MSG_TPL_DEFAULT[g];
+  const tpl = tplFor(g);
   $('msg-header').value = tpl.header;
   $('msg-line').value = tpl.line;
   if (!$('msg-date-fmt').options.length) {
@@ -4141,7 +4182,7 @@ function renderMsgSettings() {
     $('msg-calc-h-op').innerHTML = MSG_CALC_OPS.map(t => '<option value="' + esc(t[0]) + '">' + esc(t[1]) + '</option>').join('');
     $('msg-calc-l-op').innerHTML = MSG_CALC_OPS.map(t => '<option value="' + esc(t[0]) + '">' + esc(t[1]) + '</option>').join('');
   }
-  $('msg-tokens-line').innerHTML = MSG_GROUPS[g].lineTokens.map(t => '<button type="button" class="msg-tok-btn" title="' + esc(t[1]) + '" onclick="msgInsertToken(\'' + t[0] + '\')">' + t[0] + '</button>').join('');
+  $('msg-tokens-line').innerHTML = msgLineTokens(g).map(t => '<button type="button" class="msg-tok-btn" title="' + esc(t[1]) + '" onclick="msgInsertToken(\'' + t[0] + '\')">' + t[0] + '</button>').join('');
   msgUpdateSyncHint();
   msgUpdatePreview();
 }
@@ -4189,7 +4230,8 @@ function msgInsertToken(tok) {
 function msgUpdatePreview() {
   const g = MSG_SEL_GROUP;
   const header = $('msg-header').value, line = $('msg-line').value;
-  const rows = (RP_PREP_DATA && RP_PREP_DATA[g] && RP_PREP_DATA[g].length) ? RP_PREP_DATA[g] : MSG_SAMPLE_ROWS[g];
+  const live = msgRowsFor(g);
+  const rows = live.length ? live : msgSampleFor(g);
   $('msg-preview').textContent = renderGroupMsgWith(g, rows, { header, line }) || '—';
 }
 // بيحاول يحفظ شكل الرسائل الحالي (MSG_TPL) على الشيت عشان يبقى مشترك لكل اللي بيستخدموا الموقع.
@@ -4204,8 +4246,8 @@ async function syncMsgTplToServer() {
   } catch (e) { return { ok: false, error: e }; }
 }
 async function msgSaveTpl() {
-  const g = MSG_SEL_GROUP;
-  MSG_TPL[g] = { header: $('msg-header').value, line: $('msg-line').value };
+  const g = MSG_SEL_GROUP, val = { header: $('msg-header').value, line: $('msg-line').value };
+  if (isCatGroup(g)) { MSG_TPL.cats = MSG_TPL.cats || {}; MSG_TPL.cats[catNameOf(g)] = val; } else MSG_TPL[g] = val;
   lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL));
   msgUpdatePreview();
   const r = await syncMsgTplToServer();
@@ -4217,7 +4259,7 @@ async function msgSaveTpl() {
 }
 async function msgResetTpl() {
   const g = MSG_SEL_GROUP;
-  MSG_TPL[g] = JSON.parse(JSON.stringify(MSG_TPL_DEFAULT[g]));
+  if (isCatGroup(g)) { if (MSG_TPL.cats) delete MSG_TPL.cats[catNameOf(g)]; } else MSG_TPL[g] = JSON.parse(JSON.stringify(MSG_TPL_DEFAULT[g]));
   lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL));
   renderMsgSettings();
   const r = await syncMsgTplToServer();
@@ -4282,26 +4324,112 @@ function renderReport() {
 // 1) قائمة التحضير: الأصناف والاختيارات وأنواع الحبة لطلبات تسليمها في الفترة
 function rpPrep() {
   const os = orders.filter(o => o.status !== 'cancel' && inRange(o.date)).sort((a, b) => orderSort(a, b, false));
-  const items = new Map(), opts = new Map(), bread = new Map();
+  const items = new Map(), opts = new Map(), bread = new Map(), cats = new Map();
   const add = (m, k, q, extra) => { const x = m.get(k) || Object.assign({ qty: 0 }, extra); x.qty += q; m.set(k, x); };
-  os.forEach(o => (o.raw || []).forEach(r => {
-    const q = numv(r.qty) || 0, n = S_(r.itemName); if (!n) return;
-    if (isOpt(r)) { add(opts, S_(r.notes) + '\u0001' + n, q, { group: S_(r.notes), name: n }); if (S_(r.breadType)) add(bread, S_(r.breadType), q, {}); }
-    else { add(items, n, q, { name: n }); if (S_(r.breadType)) add(bread, S_(r.breadType), q, {}); }
-  }));
+  // اسم المجموعة (زي ما بيتسجل في عمود Notes بالمبيعات) → تصنيفها وهل هي اختيار متعدد، عشان نقدر نجمّع تقرير/رسالة لكل تصنيف (بذرة، حشو، ...) لوحده
+  const grpCat = new Map((DB.groups || []).map(g => [nk(S_(g.name) || S_(g.code)), S_(g.groupCategory)]));
+  const grpMulti = new Map((DB.groups || []).map(g => [nk(S_(g.name) || S_(g.code)), /^multiple$/i.test(S_(g.type))]));
+  // اسم الاختيار (زي "عيش أسمر") → تصنيف المجموعة اللي الاختيار ده تابع لها، عشان لو الاختيار ده جاي كـ"نوع حبة" متداخل جوه اختيار تاني
+  // (زي البذرة جوه الحشو في البوكس المتداخل) نقدر نلاقي تصنيفه ونعمله بطاقة تقرير/رسالة لوحده بنفس طريقة الاختيارات العادية
+  const grpByCode = new Map((DB.groups || []).map(g => [S_(g.code), g]));
+  const optNameCat = new Map(), optNameGroupName = new Map();
+  (DB.options || []).forEach(o => {
+    const g = grpByCode.get(S_(o.group));
+    if (!g) return;
+    optNameCat.set(nk(S_(o.name)), S_(g.groupCategory));
+    optNameGroupName.set(nk(S_(o.name)), S_(g.name));
+  });
+  os.forEach(o => {
+    // خريطة رقم السطر (line) → اسم الصنف في نفس الفاتورة، عشان نقدر نعرف كل اختيار اتضاف لأنهي صنف،
+    // ونبني تفصيل "فلان من التصنيف = كذا، منه كذا للصنف الفلاني وكذا للصنف التاني" في تقرير/رسالة التصنيف
+    const lineItem = new Map();
+    (o.raw || []).forEach(r => { if (!isOpt(r) && S_(r.line)) lineItem.set(S_(r.line), S_(r.itemName)); });
+    // خريطة رقم السطر → (تصنيف ← الاختيار) لكل تصنيف "اختيار واحد" وقع في نفس السطر، عشان نربط بين تصنيفين في نفس الصنف
+    // (زي البذرة مع الحشو في نفس البوكس): اختيار واحد بس عشان قيمته واضحة ومحددة لكل السطر، عكس اختيار متعدد اللي ممكن يبقى له أكتر من قيمة في نفس السطر
+    const lineCatOpt = new Map();
+    (o.raw || []).forEach(r => {
+      if (!isOpt(r)) return;
+      const grp = S_(r.notes), cat = grpCat.get(nk(grp)), ln = S_(r.line), optName = S_(r.itemName);
+      if (!cat || !ln || !optName || grpMulti.get(nk(grp))) return;
+      if (!lineCatOpt.has(ln)) lineCatOpt.set(ln, new Map());
+      lineCatOpt.get(ln).set(cat, optName);
+    });
+    // دالة تجيب (أو تستحدث لو أول مرة) دخول تصنيف/اختيار معيّن في cats، عشان نقدر نسجّل "تفصيل مرتبط" في الاتجاهين
+    // (من الحشو للبذرة، ومن البذرة للحشو) من غير ما نبوّظ qty أو byItem بتاعة أي دخول إلا من صفّه الأصلي بس
+    const getCatEntry = (cat, name, group) => {
+      if (!cats.has(cat)) cats.set(cat, new Map());
+      const catM = cats.get(cat);
+      let x = catM.get(name);
+      if (!x) { x = { name, group: group || '', qty: 0, byItem: new Map(), byLinked: new Map() }; catM.set(name, x); }
+      else if (group && !x.group) x.group = group;
+      return x;
+    };
+    (o.raw || []).forEach(r => {
+      const q = numv(r.qty) || 0, n = S_(r.itemName); if (!n) return;
+      if (isOpt(r)) {
+        const grp = S_(r.notes);
+        add(opts, grp + '\u0001' + n, q, { group: grp, name: n });
+        if (S_(r.breadType)) add(bread, S_(r.breadType), q, {});
+        const cat = grpCat.get(nk(grp));
+        if (cat) {
+          const x = getCatEntry(cat, n, grp);
+          x.qty += q;
+          const itemName = lineItem.get(S_(r.line));
+          if (itemName) x.byItem.set(itemName, (x.byItem.get(itemName) || 0) + q);
+          const otherSel = lineCatOpt.get(S_(r.line));
+          if (otherSel) otherSel.forEach((optName, otherCat) => {
+            if (otherCat === cat) return;
+            x.byLinked.set(optName, (x.byLinked.get(optName) || 0) + q);
+            // الاتجاه العكسي: سجّل نفس الكمية تحت دخول التصنيف التاني (البذرة مثلاً) باسم الاختيار الحالي (الحشو)،
+            // عشان تقرير/رسالة البذرة يقدر يعرض "تحت عيش أسمر: كام كفتة وكام فراخ" بنفس طريقة تقرير الحشو العكسية
+            const ox = getCatEntry(otherCat, optName, '');
+            ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q);
+          });
+          // البوكس المتداخل: الاختيار ده ممكن يحمل "نوع حبة" (breadType) خاص بيه بس مش عن طريق سطر اختيار منفصل،
+          // لكن عن طريق تقسيم كميته هو نفسه على نوع الحبة (زي 2 كفتة أبيض + 1 كفتة أسمر في نفس البوكس)،
+          // فلازم نعامله كإنه "اختيار" من تصنيف تاني (بذرة) بنفس الكمية، ونربطه في الاتجاهين زي أي تصنيف تاني
+          const bt = S_(r.breadType);
+          if (bt) {
+            const btCat = optNameCat.get(nk(bt));
+            if (btCat && btCat !== cat) {
+              x.byLinked.set(bt, (x.byLinked.get(bt) || 0) + q);
+              const ox = getCatEntry(btCat, bt, optNameGroupName.get(nk(bt)) || '');
+              ox.qty += q;
+              if (itemName) ox.byItem.set(itemName, (ox.byItem.get(itemName) || 0) + q);
+              ox.byLinked.set(n, (ox.byLinked.get(n) || 0) + q);
+            }
+          }
+        }
+      }
+      else { add(items, n, q, { name: n }); if (S_(r.breadType)) add(bread, S_(r.breadType), q, {}); }
+    });
+  });
   const itemRows = Array.from(items.values()).sort((a, b) => b.qty - a.qty);
   const optRows = Array.from(opts.values()).sort((a, b) => a.group.localeCompare(b.group) || b.qty - a.qty);
   const breadRows = Array.from(bread.entries()).sort((a, b) => b[1].qty - a[1].qty);
-  RP_PREP_DATA = { bread: breadRows.map(x => ({ name: x[0], qty: x[1].qty })), items: itemRows.map(x => ({ name: x.name, qty: x.qty })), options: optRows.map(x => ({ name: x.name, qty: x.qty, group: x.group })) };
+  const catNames = Array.from(cats.keys()).sort((a, b) => a.localeCompare(b, 'ar'));
+  // byItem/byLinked بيتحولوا من Map لقايمة {name, qty} مرتبة تنازلياً، عشان تبقوا جاهزين للعرض والرسالة من غير أي تحويل تاني
+  const mapToSortedList = m => Array.from(m.entries()).map(([name, qty]) => ({ name, qty })).sort((a, b) => b.qty - a.qty);
+  const catData = {}; catNames.forEach(c => { catData[c] = Array.from(cats.get(c).values()).map(x => Object.assign({}, x, { byItem: mapToSortedList(x.byItem), byLinked: mapToSortedList(x.byLinked) })).sort((a, b) => b.qty - a.qty); });
+  RP_PREP_DATA = { bread: breadRows.map(x => ({ name: x[0], qty: x[1].qty })), items: itemRows.map(x => ({ name: x.name, qty: x.qty })), options: optRows.map(x => ({ name: x.name, qty: x.qty, group: x.group })), cats: catData };
   RP_PREP_BREAD = RP_PREP_DATA.bread;
   const pick = os.filter(o => o.deliver !== 'توصيل').length;
   RP_EXPORT = [['النوع', 'المجموعة', 'الاسم', 'الكمية']].concat(itemRows.map(x => ['صنف', '', x.name, x.qty]), optRows.map(x => ['اختيار', x.group, x.name, x.qty]), breadRows.map(x => ['نوع الحبة', '', x[0], x[1].qty]));
+  const catCopyBtn = c => '<button type="button" class="btn btn-secondary rp-copy-btn no-print" data-cat="' + esc(c) + '" onclick="copyPrepGroup(\'cat:\'+this.dataset.cat)">📋 نسخ رسالة</button>';
+  const catBreakdownHtml = x => {
+    const lines = [];
+    if (x.byItem && x.byItem.length > 1) lines.push(x.byItem.map(bi => fmtN(bi.qty) + ' ' + esc(bi.name)).join(' · '));
+    if (x.byLinked && x.byLinked.length > 1) lines.push('🔗 ' + x.byLinked.map(bl => fmtN(bl.qty) + ' ' + esc(bl.name)).join(' · '));
+    return lines.length ? '<div class="cg-meta" style="font-size:12px;margin-top:3px">' + lines.join('<br>') + '</div>' : '';
+  };
+  const catCards = catNames.map(c => rpCard('تصنيف: ' + esc(c), rpTable(['الاختيار', 'الكمية'], catData[c].map(x => [esc(x.name) + catBreakdownHtml(x), '<b>' + fmtN(x.qty) + '</b>'])), null, catCopyBtn(c))).join('');
   return rpKpis([['عدد الطلبات', os.length, pick + ' استلام · ' + (os.length - pick) + ' توصيل'], ['قطع الأصناف', fmtN(itemRows.reduce((s, x) => s + x.qty, 0))], ['قطع الاختيارات', fmtN(optRows.reduce((s, x) => s + x.qty, 0))]]) +
     '<div class="rp-grid">' +
     rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('items')")) +
     rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('bread')")) +
     '</div>' +
     rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('options')")) +
+    catCards +
     rpCard('الطلبات', rpTable(['#', 'التسليم', 'العميل', 'الأصناف', 'الحالة', 'الباقي'], os.map(o => ['<a href="#" onclick="nav(\'orders\');openOrder(' + oid(o) + ');return false">' + esc(o.id) + '</a>', fmtDate(o.date) + ' · ' + (o.deliver === 'توصيل' ? '🚚 ' + esc(o.address || '') : '🏪 استلام'), esc(o.customer), esc(o.items.map(i => i.qty + '× ' + i.name).join('، ')), '<span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span>', totals(o).rem > 0 ? '<b class="rp-due">' + money(totals(o).rem) + '</b>' : '<span class="tag tag-paid">مدفوع</span>'])));
 }
 
@@ -4629,7 +4757,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 /* ───────── Add order: wizard ───────── */
 let cart = [];
 let deliver = 'استلام';
-const B = { code: '', sel: {}, qty: 1, cat: 'all', q: '', accOpen: {} };
+const B = { code: '', sel: {}, qty: 1, cat: 'all', q: '', accOpen: {}, nest: {} };
 let PICK = null;          // العميل المختار (صف من شيت Clients)
 let CP_LIST = [], WZ_LIST = [];
 
@@ -4755,7 +4883,7 @@ function itemGroups(it) {
     if (MAP.groups.cols.required && S_(g.required) !== '' && isOn(g.required) && min < 1) min = 1;
     if (!multi) max = 1;
     if (max && min > max) min = max;
-    if (opts.length) out.push({ code: S_(g.code), name: S_(g.name) || S_(g.code), multi, min, max, opts });
+    if (opts.length) out.push({ code: S_(g.code), name: S_(g.name) || S_(g.code), multi, min, max, opts, groupCategory: S_(g.groupCategory) });
   });
   return out;
 }
@@ -4771,9 +4899,53 @@ const gMaxE = g => g.multi ? (g.max ? g.max * BQ() : 0) : g.max;
 const oMaxE = (g, o) => g.multi ? oMax(o) * BQ() : 1;
 const gSel = gc => B.sel[gc] || (B.sel[gc] = {});
 const gTotal = gc => Object.values(B.sel[gc] || {}).reduce((s, q) => s + q, 0);
+// تداخل المجموعات: صندوق بكمية (مجموعة multi، زي الحشو) مربوط بصنف وبه مجموعة ثانية بتصنيف مختلف (زي البذرة)
+// بيخلي كل اختيار محدد كميته في المجموعة الأولى يظهر تحته تقسيم فرعي من اختيارات المجموعة الثانية، لازم يساوي نفس الكمية
+// (مفعّل بس لما يكون فيه مجموعة multi واحدة بالضبط للصنف، ومجموعة ثانية ليها تصنيف مختلف — غير كده كل المجموعات تفضل عادية ومستقلة)
+function nestInfo(groups) {
+  const multis = (groups || []).filter(g => g.multi);
+  if (multis.length !== 1) return null;
+  const p = multis[0];
+  if (!S_(p.groupCategory)) return null;
+  const child = groups.find(g => g.code !== p.code && S_(g.groupCategory) && nk(g.groupCategory) !== nk(p.groupCategory));
+  return child ? { parent: p, child } : null;
+}
+const nestSel = (gc, k) => { const m = B.nest[gc] || (B.nest[gc] = {}); return m[k] || (m[k] = {}); };
+const nestTotal = (gc, k) => Object.values(nestSel(gc, k)).reduce((s, q) => s + q, 0);
+function nestClear(gc, k) { if (B.nest[gc]) delete B.nest[gc][k]; }
+// بيقلّم التقسيم الفرعي لما كمية الاختيار الأصلي تقل عن إجمالي المقسوم عليه (بيشيل من آخر اختيار فرعي أولاً)
+function trimNest(gc, k, q) {
+  const sel = B.nest[gc] && B.nest[gc][k]; if (!sel) return;
+  const keys = Object.keys(sel);
+  let used = keys.reduce((s, x) => s + sel[x], 0);
+  for (let i = keys.length - 1; i >= 0 && used > q; i--) {
+    const take = Math.min(sel[keys[i]], used - q);
+    sel[keys[i]] -= take; used -= take;
+    if (sel[keys[i]] <= 0) delete sel[keys[i]];
+  }
+}
 function selOpts(groups) {
+  const nest = nestInfo(groups);
   const out = [];
-  groups.forEach(g => Object.keys(B.sel[g.code] || {}).forEach(k => { const o = g.opts.find(x => optKey(x) === k), q = B.sel[g.code][k]; if (o && q > 0) out.push({ group: g.name, name: S_(o.name), price: Number(o.price) || 0, qty: g.multi ? q : q * BQ(), bread: S_(o.breadType) }); }));
+  groups.forEach(g => {
+    if (nest && g.code === nest.child.code) return;   // المجموعة الثانية بتتعرض متداخلة تحت الأولى، مش كبلوك مستقل
+    Object.keys(B.sel[g.code] || {}).forEach(k => {
+      const o = g.opts.find(x => optKey(x) === k), q = B.sel[g.code][k];
+      if (!o || !(q > 0)) return;
+      const qty = g.multi ? q : q * BQ();
+      if (nest && g.code === nest.parent.code) {
+        const sub = nestSel(g.code, k), subKeys = Object.keys(sub).filter(ck => sub[ck] > 0);
+        if (subKeys.length) {
+          subKeys.forEach(ck => {
+            const co = nest.child.opts.find(x => optKey(x) === ck);
+            if (co) out.push({ group: g.name, name: S_(o.name), price: (Number(o.price) || 0) + (Number(co.price) || 0), qty: sub[ck], bread: S_(co.name) });
+          });
+          return;
+        }
+      }
+      out.push({ group: g.name, name: S_(o.name), price: Number(o.price) || 0, qty, bread: S_(o.breadType) });
+    });
+  });
   return out;
 }
 const optLabel = o => o.name + (o.qty > 1 ? ' ×' + o.qty : '') + (o.price ? ' (+' + o.price * o.qty + ')' : '');
@@ -4813,14 +4985,34 @@ function pillHTML(g, o) {
     esc(o.name) + (Number(o.price) ? ' <small>+' + fmtPrice(o.price) + '</small>' : '') +
     '</div>';
 }
-function rowHTML(g, o) {
+function rowHTML(g, o, child) {
   const k = optKey(o), q = (B.sel[g.code] || {})[k] || 0, mx = oMaxE(g, o), on = q > 0;
   const range = mx === Infinity ? (oMin(o) > 1 ? 'من ' + oMin(o) : '') : mx > 1 ? (oMin(o) > 1 ? oMin(o) + '–' + mx : 'حتى ' + mx) : '';
   const sub = [S_(o.breadType) ? '🍞 ' + esc(S_(o.breadType)) : '', Number(o.price) ? '+' + fmtPrice(o.price) + ' للقطعة' : '', range ? 'كمية ' + range : ''].filter(Boolean).join(' · ');
   return '<div class="b-orow' + (on ? ' on' : '') + '">' +
     '<div class="b-orow-info"><div class="b-orow-nm">' + esc(o.name) + '</div>' + (sub ? '<div class="b-orow-sub">' + sub + '</div>' : '') + '</div>' +
     '<span class="oq"><button type="button" aria-label="إنقاص"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',-1)">−</button><b>' + q + '</b><button type="button" aria-label="زيادة"' + (mx !== Infinity && q >= mx ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',1)">+</button></span>' +
-    '</div>';
+    '</div>' + (child && on ? nestBlockHTML(g, o, child) : '');
+}
+// تقسيم فرعي تحت اختيار محدد كميته في مجموعة الصندوق: يوزّع نفس الكمية على اختيارات مجموعة ثانية بتصنيف مختلف (زي البذرة)
+function nestBlockHTML(g, o, child) {
+  const k = optKey(o), q = (B.sel[g.code] || {})[k] || 0, sel = nestSel(g.code, k), used = nestTotal(g.code, k);
+  const rows = child.opts.map(co => {
+    const ck = optKey(co), cq = sel[ck] || 0;
+    return '<div class="b-nest-row' + (cq > 0 ? ' on' : '') + '"><span class="b-nest-nm">' + esc(co.name) + '</span>' +
+      '<span class="oq"><button type="button" aria-label="إنقاص"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',-1)">−</button><b>' + cq + '</b><button type="button" aria-label="زيادة"' + (used >= q ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',1)">+</button></span></div>';
+  }).join('');
+  const st = used === q ? 'ok' : used > q ? 'over' : 'under';
+  return '<div class="b-nest"><div class="b-nest-title">وزّع «' + esc(child.name) + '» على ' + fmtN(q) + ' ' + esc(S_(o.name)) + '</div>' +
+    '<div class="b-nest-rows">' + rows + '</div>' +
+    '<div class="b-nest-bar ' + st + '">المحدد ' + fmtN(used) + ' من ' + fmtN(q) + (used === q ? ' ✓' : ' — الباقي ' + fmtN(Math.max(0, q - used))) + '</div></div>';
+}
+function nOptQ(gc, k, ck, d) {
+  const sel = nestSel(gc, k), q = (B.sel[gc] || {})[k] || 0, used = nestTotal(gc, k), cur = sel[ck] || 0;
+  if (d > 0 && used >= q) { toast('الكمية كاملة (' + fmtN(q) + ')'); return; }
+  const nq = Math.max(0, cur + d);
+  if (nq === 0) delete sel[ck]; else sel[ck] = nq;
+  buildBuilder();
 }
 function buildBuilder() {
   const grid = $('prod-grid');
@@ -4841,15 +5033,16 @@ function buildBuilder() {
   grid.innerHTML = WZ_LIST.length ? WZ_LIST.map((p, i) =>
     '<div class="bread-option' + (S_(p.code) === B.code ? ' selected' : '') + '" tabindex="0" role="button" onclick="bProd(' + i + ')" onkeydown="if(event.key===\'Enter\')bProd(' + i + ')"><div class="bread-emoji">' + iconHTML(p) + '</div><div class="bread-name">' + esc(p.name) + '</div><div class="bread-price">' + fmtPrice(p.price) + '</div></div>').join('')
     : '<div class="cart-empty" style="grid-column:1/-1">لا توجد أصناف مطابقة</div>';
-  const it = wzItem(), groups = itemGroups(it);
-  $('b-opts').innerHTML = !it ? '<div class="cg-meta">اختر صنفاً لعرض اختياراته.</div>' : groups.length ? groups.map(groupBlockHTML).join('') : '<div class="res-msg warn">' + esc(optsWhy(it)) + '</div>';
+  const it = wzItem(), groups = itemGroups(it), nest = nestInfo(groups);
+  const renderGroups = nest ? groups.filter(g => g.code !== nest.child.code) : groups;
+  $('b-opts').innerHTML = !it ? '<div class="cg-meta">اختر صنفاً لعرض اختياراته.</div>' : renderGroups.length ? renderGroups.map(g => groupBlockHTML(g, nest)).join('') : '<div class="res-msg warn">' + esc(optsWhy(it)) + '</div>';
   $('b-qty').value = B.qty;
   $('b-preview').textContent = money(it ? wzUnit(it, groups) * B.qty : 0);
 }
 function bProd(i) {
   const p = WZ_LIST[i]; if (!p) return;
   if (S_(p.code) !== B.code) {
-    B.code = S_(p.code); B.sel = {}; B.accOpen = {};
+    B.code = S_(p.code); B.sel = {}; B.accOpen = {}; B.nest = {};
     itemGroups(p).forEach(g => { if (!g.multi && g.min && g.opts.length === 1) B.sel[g.code] = { [optKey(g.opts[0])]: oMin(g.opts[0]) }; });
   }
   buildBuilder();
@@ -4857,15 +5050,16 @@ function bProd(i) {
 // مجموعات الاختيار المفرد قابلة للطي (أكورديون)؛ مجموعات الاختيار المتعدد بكمية (زي الصندوق) تفضل مفتوحة دايماً
 function isGroupOpen(gc) { return B.accOpen[gc] !== false; }
 function toggleGroupAcc(gc) { B.accOpen[gc] = isGroupOpen(gc) ? false : true; buildBuilder(); }
-function groupBlockHTML(g) {
+function groupBlockHTML(g, nest) {
   const tot = gTotal(g.code), reqBadge = g.min ? ' <span class="b-req">إجباري</span>' : '';
+  const child = (nest && g.code === nest.parent.code) ? nest.child : null;
   if (g.multi) {
     const mx = gMaxE(g), barPct = mx && mx !== Infinity ? Math.min(100, Math.round(tot / mx * 100)) : 0;
     return '<div class="b-group b-group-multi"><div class="b-gname">' + esc(g.name) + reqBadge + '</div>' +
       (mx && mx !== Infinity
         ? '<div class="b-bar-wrap"><div class="b-bar-lbl"><span>' + fmtN(tot) + ' من ' + fmtN(mx) + '</span><span>' + groupHint(g) + '</span></div><div class="b-bar"><b style="width:' + barPct + '%"></b></div></div>'
         : '<div class="b-gname-hint">' + groupHint(g) + (tot ? ' · المختار ' + fmtN(tot) : '') + '</div>') +
-      '<div class="b-orows">' + g.opts.map(o => rowHTML(g, o)).join('') + '</div></div>';
+      '<div class="b-orows">' + g.opts.map(o => rowHTML(g, o, child)).join('') + '</div></div>';
   }
   const open = isGroupOpen(g.code), selK = Object.keys(gSel(g.code))[0];
   const selOpt = selK ? g.opts.find(x => optKey(x) === selK) : null;
@@ -4878,7 +5072,7 @@ function bOpt(gc, k) {
   const g = itemGroups(wzItem()).find(x => x.code === gc); if (!g) return;
   const o = g.opts.find(x => optKey(x) === k); if (!o) return;
   const sel = gSel(gc);
-  if (sel[k]) { if (!g.multi && g.min) return; delete sel[k]; }
+  if (sel[k]) { if (!g.multi && g.min) return; delete sel[k]; nestClear(gc, k); }
   else {
     if (!g.multi) { B.sel[gc] = { [k]: oMin(o) }; }
     else {
@@ -4898,9 +5092,10 @@ function bOptQ(gc, k, d) {
   }
   const nq = sel[k] + d;
   if (nq > oMaxE(g, o)) { toast('أقصى كمية من «' + S_(o.name) + '» هي ' + oMaxE(g, o)); return; }
-  if (nq < oMin(o)) { if (!g.multi && g.min) { toast('أقل كمية من «' + S_(o.name) + '» هي ' + oMin(o)); return; } delete sel[k]; buildBuilder(); return; }
+  if (nq < oMin(o)) { if (!g.multi && g.min) { toast('أقل كمية من «' + S_(o.name) + '» هي ' + oMin(o)); return; } delete sel[k]; nestClear(gc, k); buildBuilder(); return; }
   if (d > 0 && gMaxE(g) && g.multi && gTotal(gc) + d > gMaxE(g)) { toast('الحد الأقصى في «' + g.name + '» هو ' + gMaxE(g)); return; }
   sel[k] = nq;
+  if (d < 0) trimNest(gc, k, nq);
   buildBuilder();
 }
 function bQty(d) {
@@ -4911,18 +5106,28 @@ function bQty(d) {
 function addToCart() {
   const it = wzItem();
   if (!it) { toast('اختر صنفاً أولاً'); return; }
-  const groups = itemGroups(it);
+  const groups = itemGroups(it), nest = nestInfo(groups);
   for (const g of groups) {
+    if (nest && g.code === nest.child.code) continue;   // مجموعة التقسيم الفرعي مالهاش حد أدنى/أقصى مستقل، بتتحقق تحت
     const n = gTotal(g.code), mn = gMinE(g), mx = gMaxE(g);
     if (n < mn) { toast(g.multi && mn > 1 ? 'اختر ' + mn + ' على الأقل في «' + g.name + '» (المختار ' + n + ')' : 'اختر من «' + g.name + '»'); return; }
     if (mx && n > mx) { toast('الحد الأقصى في «' + g.name + '» هو ' + mx + ' (المختار ' + n + ')'); return; }
     for (const k of Object.keys(B.sel[g.code] || {})) { const o = g.opts.find(x => optKey(x) === k); if (o && B.sel[g.code][k] > oMaxE(g, o)) { toast('أقصى كمية من «' + S_(o.name) + '» هي ' + oMaxE(g, o)); return; } }
   }
+  if (nest) {
+    for (const k of Object.keys(B.sel[nest.parent.code] || {})) {
+      const q = B.sel[nest.parent.code][k]; if (!(q > 0)) continue;
+      const o = nest.parent.opts.find(x => optKey(x) === k); if (!o) continue;
+      const used = nestTotal(nest.parent.code, k);
+      if (used === 0) { if (nest.child.min) { toast('وزّع «' + nest.child.name + '» على ' + S_(o.name)); return; } }
+      else if (used !== q) { toast('توزيع «' + nest.child.name + '» على «' + S_(o.name) + '» لازم يساوي ' + fmtN(q) + ' (دلوقتي ' + fmtN(used) + ')'); return; }
+    }
+  }
   const opts = selOpts(groups), note = $('b-note').value.trim();
   const line = { code: S_(it.code), name: S_(it.name), fill: 'سادة', size: '', opts, extras: opts.map(optLabel), bread: breadOf(opts), grain: S_(it.grainType), qty: B.qty, note, unit: wzUnit(it, groups) };
   const same = !opts.length && cart.find(c => c.code === line.code && c.note === line.note && !(c.opts || []).length);
   if (same) same.qty += line.qty; else cart.push(line);
-  B.sel = {}; B.qty = 1; $('b-note').value = '';
+  B.sel = {}; B.qty = 1; B.nest = {}; $('b-note').value = '';
   itemGroups(it).forEach(g => { if (!g.multi && g.min && g.opts.length === 1) B.sel[g.code] = { [optKey(g.opts[0])]: oMin(g.opts[0]) }; });
   buildBuilder();
   renderCart();
@@ -5123,7 +5328,7 @@ async function submitOrder() {
   }
 }
 function resetWizard() {
-  cart = []; B.code = ''; B.sel = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
+  cart = []; B.code = ''; B.sel = {}; B.nest = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
   ['c-search', 'c-address', 'c-notes', 'b-note', 'b-q', 'c-invref'].forEach(id => $(id).value = '');
   renderPick();
   $('p-discount').value = 0; $('p-paid').value = 0; $('c-date').value = todayStr();
