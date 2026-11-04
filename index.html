@@ -1679,9 +1679,11 @@ body.o-dragging .col-body { min-height: 120px; }
 @media (max-width: 560px) { .cp-row { flex-direction: column; } }
 .opt-chip { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .opt-chip .oc-sub { font-size: 11.5px; font-weight: 500; color: var(--fg-muted); }
-.oq { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1.5px solid var(--brand); border-radius: 999px; padding: 2px 6px; }
+.oq { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1.5px solid var(--brand); border-radius: 999px; padding: 2px 6px; flex-wrap: wrap; }
 .oq button { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 700; cursor: pointer; line-height: 1; font-size: 14px; }
 .oq b { min-width: 16px; text-align: center; color: var(--fg); font-size: 13.5px; }
+.oq button.oq-max, .oq button.oq-zero { width: auto; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--surface-2, #eee); color: var(--brand-dark, var(--brand)); border: 1px solid var(--brand); }
+.oq button.oq-max:disabled, .oq button.oq-zero:disabled { opacity: .35; cursor: not-allowed; }
 /* Accordion for single-select option groups */
 .b-acc { border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
 .b-acc-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; cursor: pointer; }
@@ -1714,6 +1716,11 @@ body.o-dragging .col-body { min-height: 120px; }
 .b-orow .oq button:disabled { opacity: .35; cursor: not-allowed; }
 /* تقسيم فرعي تحت اختيار بكمية (زي توزيع البذرة على كمية الحشو داخل صندوق) */
 .b-nest { margin: 6px 0 10px; padding: 10px 12px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: 10px; }
+.b-defaults { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.b-defaults .btn { padding: 6px 12px; font-size: 12.5px; }
+.b-nest-def { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
+.b-nest-def button { padding: 4px 10px; font-size: 11px; font-weight: 700; border-radius: 999px; background: var(--surface-2, #eee); color: var(--brand-dark, var(--brand)); border: 1px solid var(--brand); cursor: pointer; }
+.b-nest-def button:disabled { opacity: .35; cursor: not-allowed; }
 .b-nest-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; }
 .b-nest-rows { display: flex; flex-direction: column; gap: 6px; }
 .b-nest-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -2363,6 +2370,8 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                     </div>
                   </div>
                 </div>
+
+                <div id="b-defaults"></div>
 
                 <div class="b-label"><b>3</b> الاختيارات <small>حسب المجموعات المربوطة بالصنف أو تصنيفه</small></div>
                 <div id="b-opts"></div>
@@ -4947,9 +4956,11 @@ function itemGroups(it) {
     const multi = /multi|متعدد|many/i.test(S_(g.type));
     let min = Math.max(0, Number(g.min) || 0), max = Math.max(0, Number(g.max) || 0);
     if (MAP.groups.cols.required && S_(g.required) !== '' && isOn(g.required) && min < 1) min = 1;
-    if (!multi) max = 1;
+    // مجموعة اختيار واحد عادية: الحد الأقصى الإجمالي 1 (اختيار واحد بس) — إلا لو إحدى اختياراتها ليها «أقصى كمية» محددة بنفسها
+    // (زي «20 Pcs»)، وقتها الكمية الفعلية للاختيار المختار هي الأهم، فمفيش داعي لسقف إجمالي ثابت على مستوى المجموعة
+    if (!multi) max = opts.some(o => S_(o.maxQty) !== '') ? 0 : 1;
     if (max && min > max) min = max;
-    if (opts.length) out.push({ code: S_(g.code), name: S_(g.name) || S_(g.code), multi, min, max, opts, groupCategory: S_(g.groupCategory) });
+    if (opts.length) out.push({ code: S_(g.code), name: S_(g.name) || S_(g.code), multi, min, max, opts, groupCategory: S_(g.groupCategory), nestChild: S_(g.nestChild) });
   });
   return out;
 }
@@ -4962,13 +4973,24 @@ const qtyTxt = o => { const mn = oMin(o), mx = oMax(o); return mx === Infinity ?
 const BQ = () => Math.max(1, B.qty || 1);
 const gMinE = g => g.multi ? g.min * BQ() : g.min;
 const gMaxE = g => g.multi ? (g.max ? g.max * BQ() : 0) : g.max;
-const oMaxE = (g, o) => g.multi ? oMax(o) * BQ() : 1;
+// لمجموعة اختيار واحد عادية الكمية دايماً 1 (زي ما كانت دايماً) — إلا لو الأدمن حدد «أقصى كمية» بنفسه على الاختيار
+// (زي «20 Pcs» بمجموعة بتتداخل جواها مجموعة تانية)، وقتها الكمية المحددة فعلاً بتبقى هي المطلوب توزيعه على المجموعة المتداخلة
+const oMaxE = (g, o) => g.multi ? oMax(o) * BQ() : (S_(o.maxQty) === '' ? 1 : oMax(o));
 const gSel = gc => B.sel[gc] || (B.sel[gc] = {});
 const gTotal = gc => Object.values(B.sel[gc] || {}).reduce((s, q) => s + q, 0);
 // تداخل المجموعات: صندوق بكمية (مجموعة multi، زي الحشو) مربوط بصنف وبه مجموعة ثانية بتصنيف مختلف (زي البذرة)
 // بيخلي كل اختيار محدد كميته في المجموعة الأولى يظهر تحته تقسيم فرعي من اختيارات المجموعة الثانية، لازم يساوي نفس الكمية
 // (مفعّل بس لما يكون فيه مجموعة multi واحدة بالضبط للصنف، ومجموعة ثانية ليها تصنيف مختلف — غير كده كل المجموعات تفضل عادية ومستقلة)
 function nestInfo(groups) {
+  // أولوية: إعداد صريح من تاب «المجموعات» (مجموعة متداخلة جواها) — بيدي تحكم كامل في مين الأب ومين الابن
+  // بدل ما يتحدد تلقائي بس من نوع المجموعة (متعدد/واحد)، عشان حالات زي "حجم الطلب" (اختيار واحد) اللي عايز يبقى هو البره
+  // وتحته تتداخل مجموعة "نوع الخبز" (متعدد)، وده عكس الوضع الافتراضي القديم
+  for (const p of (groups || [])) {
+    const cc = S_(p.nestChild); if (!cc) continue;
+    const child = groups.find(g => g.code !== p.code && nk(S_(g.code)) === nk(cc));
+    if (child) return { parent: p, child };
+  }
+  // الوضع الافتراضي (لو مفيش إعداد صريح): مجموعة متعدد واحدة بس + مجموعة تانية بتصنيف مختلف — زي ما كان دايماً
   const multis = (groups || []).filter(g => g.multi);
   if (multis.length !== 1) return null;
   const p = multis[0];
@@ -5057,7 +5079,9 @@ function rowHTML(g, o, child) {
   const sub = [S_(o.breadType) ? '🍞 ' + esc(S_(o.breadType)) : '', Number(o.price) ? '+' + fmtPrice(o.price) + ' للقطعة' : '', range ? 'كمية ' + range : ''].filter(Boolean).join(' · ');
   return '<div class="b-orow' + (on ? ' on' : '') + '">' +
     '<div class="b-orow-info"><div class="b-orow-nm">' + esc(o.name) + '</div>' + (sub ? '<div class="b-orow-sub">' + sub + '</div>' : '') + '</div>' +
-    '<span class="oq"><button type="button" aria-label="إنقاص"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',-1)">−</button><b>' + q + '</b><button type="button" aria-label="زيادة"' + (mx !== Infinity && q >= mx ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',1)">+</button></span>' +
+    '<span class="oq"><button type="button" aria-label="إنقاص"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',-1)">−</button><b>' + q + '</b><button type="button" aria-label="زيادة"' + (mx !== Infinity && q >= mx ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',1)">+</button>' +
+    '<button type="button" class="oq-max" aria-label="أقصى كمية"' + (mx === Infinity || q >= mx ? ' disabled' : '') + ' onclick="bOptMax(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="أقصى كمية مسموحة">أقصى</button>' +
+    '<button type="button" class="oq-zero" aria-label="تصفير الكمية"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptZero(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="تصفير">0</button></span>' +
     '</div>' + (child && on ? nestBlockHTML(g, o, child) : '');
 }
 // تقسيم فرعي تحت اختيار محدد كميته في مجموعة الصندوق: يوزّع نفس الكمية على اختيارات مجموعة ثانية بتصنيف مختلف (زي البذرة)
@@ -5066,10 +5090,19 @@ function nestBlockHTML(g, o, child) {
   const rows = child.opts.map(co => {
     const ck = optKey(co), cq = sel[ck] || 0;
     return '<div class="b-nest-row' + (cq > 0 ? ' on' : '') + '"><span class="b-nest-nm">' + esc(co.name) + '</span>' +
-      '<span class="oq"><button type="button" aria-label="إنقاص"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',-1)">−</button><b>' + cq + '</b><button type="button" aria-label="زيادة"' + (used >= q ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',1)">+</button></span></div>';
+      '<span class="oq"><button type="button" aria-label="إنقاص"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',-1)">−</button><b>' + cq + '</b><button type="button" aria-label="زيادة"' + (used >= q ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',1)">+</button>' +
+      '<button type="button" class="oq-max" aria-label="أقصى كمية"' + (used >= q ? ' disabled' : '') + ' onclick="nOptMax(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\')" title="أقصى كمية متاحة من الباقي">أقصى</button>' +
+      '<button type="button" class="oq-zero" aria-label="تصفير الكمية"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptZero(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\')" title="تصفير">0</button></span></div>';
   }).join('');
   const st = used === q ? 'ok' : used > q ? 'over' : 'under';
+  const it = wzItem(), defCol = !!MAP.items.cols.defaultOpts;
+  const hasOptDef = defCol && it ? !!((parseDefaults(it).opts || {})[k]) : false;
+  // افتراضي خاص بالتوزيع الفرعي تحت هذا الاختيار بالذات (زي: افتراضي مختلف لتوزيع «20 Pcs» عن توزيع «40 Pcs»)
+  const defBtns = defCol ? '<div class="b-nest-def">' +
+    '<button type="button" onclick="saveOptionDefault(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="يحفظ هذا التوزيع كافتراضي خاص بـ«' + esc(S_(o.name)) + '»">⭐ حفظ توزيع «' + esc(S_(o.name)) + '»</button>' +
+    '<button type="button"' + (hasOptDef ? '' : ' disabled') + ' onclick="loadOptionDefault(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="' + (hasOptDef ? 'يرجّع توزيع «' + esc(S_(o.name)) + '» المحفوظ' : 'لا يوجد توزيع محفوظ لـ«' + esc(S_(o.name)) + '»') + '">📥 استرجاع</button></div>' : '';
   return '<div class="b-nest"><div class="b-nest-title">وزّع «' + esc(child.name) + '» على ' + fmtN(q) + ' ' + esc(S_(o.name)) + '</div>' +
+    defBtns +
     '<div class="b-nest-rows">' + rows + '</div>' +
     '<div class="b-nest-bar ' + st + '">المحدد ' + fmtN(used) + ' من ' + fmtN(q) + (used === q ? ' ✓' : ' — الباقي ' + fmtN(Math.max(0, q - used))) + '</div></div>';
 }
@@ -5080,12 +5113,26 @@ function nOptQ(gc, k, ck, d) {
   if (nq === 0) delete sel[ck]; else sel[ck] = nq;
   buildBuilder();
 }
+// يدّي الاختيار الفرعي ده كل الباقي المتاح من إجمالي التوزيع المطلوب دفعة واحدة
+function nOptMax(gc, k, ck) {
+  const sel = nestSel(gc, k), q = (B.sel[gc] || {})[k] || 0, used = nestTotal(gc, k), cur = sel[ck] || 0;
+  const room = Math.max(0, q - used);
+  if (!room) { toast('الكمية كاملة (' + fmtN(q) + ')'); return; }
+  sel[ck] = cur + room;
+  buildBuilder();
+}
+function nOptZero(gc, k, ck) {
+  const sel = nestSel(gc, k);
+  if (!sel[ck]) return;
+  delete sel[ck];
+  buildBuilder();
+}
 function buildBuilder() {
   const grid = $('prod-grid');
   if (!grid) return;
   const all = wzItems();
   if (!all.length) {
-    $('b-cats').innerHTML = ''; $('b-opts').innerHTML = '';
+    $('b-cats').innerHTML = ''; $('b-opts').innerHTML = ''; if ($('b-defaults')) $('b-defaults').innerHTML = '';
     grid.innerHTML = '<div class="cart-empty" style="grid-column:1/-1">' + (catReady('items') ? 'لا توجد أصناف مفعّلة في شيت Items.' : CFG.scriptUrl ? 'جاري تحميل الأصناف من الشيت…' : 'الموقع غير مربوط بالشيت بعد.') + '</div>';
     $('b-preview').textContent = money(0);
     return;
@@ -5101,6 +5148,7 @@ function buildBuilder() {
     : '<div class="cart-empty" style="grid-column:1/-1">لا توجد أصناف مطابقة</div>';
   const it = wzItem(), groups = itemGroups(it), nest = nestInfo(groups);
   const renderGroups = nest ? groups.filter(g => g.code !== nest.child.code) : groups;
+  if ($('b-defaults')) $('b-defaults').innerHTML = defaultsBlockHTML(it);
   $('b-opts').innerHTML = !it ? '<div class="cg-meta">اختر صنفاً لعرض اختياراته.</div>' : renderGroups.length ? renderGroups.map(g => groupBlockHTML(g, nest)).join('') : '<div class="res-msg warn">' + esc(optsWhy(it)) + '</div>';
   $('b-qty').value = B.qty;
   $('b-preview').textContent = money(it ? wzUnit(it, groups) * B.qty : 0);
@@ -5130,9 +5178,12 @@ function groupBlockHTML(g, nest) {
   const open = isGroupOpen(g.code), selK = Object.keys(gSel(g.code))[0];
   const selOpt = selK ? g.opts.find(x => optKey(x) === selK) : null;
   const summary = selOpt ? '✓ ' + esc(S_(selOpt.name)) : (g.min ? 'اختر من هنا' : 'اختياري');
+  // لو المجموعة دي أب لمجموعة متداخلة (زي حجم الطلب → نوع الخبز)، اظهر صندوق التوزيع الفرعي تحت الاختيار المحدد
+  // بنفس طريقة مجموعات الصندوق (multi)، عشان الكمية المطلوب توزيعها هنا بتيجي من «أقل كمية» المضبوطة على الاختيار نفسه (مش BQ())
+  const nestBlock = (child && selOpt) ? nestBlockHTML(g, selOpt, child) : '';
   return '<div class="b-group b-acc' + (open ? ' open' : '') + '">' +
     '<div class="b-acc-head" onclick="toggleGroupAcc(\'' + esc(g.code) + '\')"><div class="b-acc-left"><div class="b-gname">' + esc(g.name) + reqBadge + '</div><div class="b-acc-summary">' + summary + '</div></div><div class="b-chev">▾</div></div>' +
-    '<div class="b-acc-body"><div class="b-pills">' + g.opts.map(o => pillHTML(g, o)).join('') + '</div></div></div>';
+    '<div class="b-acc-body"><div class="b-pills">' + g.opts.map(o => pillHTML(g, o)).join('') + '</div>' + nestBlock + '</div></div>';
 }
 function bOpt(gc, k) {
   const g = itemGroups(wzItem()).find(x => x.code === gc); if (!g) return;
@@ -5162,6 +5213,27 @@ function bOptQ(gc, k, d) {
   if (d > 0 && gMaxE(g) && g.multi && gTotal(gc) + d > gMaxE(g)) { toast('الحد الأقصى في «' + g.name + '» هو ' + gMaxE(g)); return; }
   sel[k] = nq;
   if (d < 0) trimNest(gc, k, nq);
+  buildBuilder();
+}
+// يدّي الاختيار ده أقصى كمية ممكنة دفعة واحدة (محسوبة من حد الاختيار نفسه وحد المجموعة الكلي لو فيه)
+function bOptMax(gc, k) {
+  const g = itemGroups(wzItem()).find(x => x.code === gc); if (!g) return;
+  const o = g.opts.find(x => optKey(x) === k); if (!o) return;
+  const sel = gSel(gc), cur = sel[k] || 0;
+  const optCap = oMaxE(g, o);
+  const roomInGroup = (g.multi && gMaxE(g)) ? Math.max(0, gMaxE(g) - gTotal(gc) + cur) : Infinity;
+  const target = Math.min(optCap, roomInGroup);
+  if (target === Infinity) { toast('لا يوجد حد أقصى محدد لهذا الاختيار'); return; }
+  if (target <= cur) { toast('الكمية بالفعل أقصى حد ممكن'); return; }
+  sel[k] = target;
+  buildBuilder();
+}
+function bOptZero(gc, k) {
+  const g = itemGroups(wzItem()).find(x => x.code === gc); if (!g) return;
+  const sel = gSel(gc), cur = sel[k] || 0; if (!cur) return;
+  if (!g.multi && g.min) { toast('اختيار واحد إجباري من «' + g.name + '»'); return; }
+  delete sel[k];
+  nestClear(gc, k);
   buildBuilder();
 }
 function bQty(d) {
@@ -5198,6 +5270,129 @@ function addToCart() {
   buildBuilder();
   renderCart();
   toast('أضيف إلى الفاتورة: ' + line.qty + '× ' + line.name);
+}
+
+/* ───────── اختيارات افتراضية محفوظة لكل صنف (⭐) ─────────
+   المخزّن في عمود «Default Options» عبارة عن مستويين:
+   - general: افتراضي عام للصنف كله (كل الاختيارات والكميات) — زي ما كان قبل كده
+   - opts: افتراضي خاص بالتوزيع الفرعي تحت اختيار معيّن بالذات (زي: توزيع مختلف لـ«20 Pcs» عن «40 Pcs»)
+   كل ده بكود المجموعة/الاختيار (مش بالاسم) عشان لو الاسم اتغيّر بعدين الاختيار المحفوظ يفضل شغال صح */
+function serializeSelection() { return JSON.stringify({ sel: B.sel, nest: B.nest, qty: B.qty }); }
+// بيقرا عمود الافتراضي ويرجّعه بشكل {general, opts} موحّد، وبيدعم الصيغة القديمة (كانت JSON واحد = الافتراضي العام بس)
+function parseDefaults(it) {
+  const json = S_(it && it.defaultOpts);
+  if (!json) return { general: null, opts: {} };
+  let data; try { data = JSON.parse(json); } catch (e) { return { general: null, opts: {} }; }
+  if (!data || typeof data !== 'object') return { general: null, opts: {} };
+  if (data.general || data.opts) return { general: data.general || null, opts: data.opts || {} };
+  if (data.sel || data.nest || data.qty) return { general: data, opts: {} }; // صيغة قديمة
+  return { general: null, opts: {} };
+}
+async function writeDefaults(it, data) {
+  const json = JSON.stringify(data);
+  await gsCall('update', { sheet: MAP.items.sheet, keyCol: MAP.items.cols.code, keyValue: it.code, values: { [MAP.items.cols.defaultOpts]: json }, textCols: [MAP.items.cols.defaultOpts] });
+  it.defaultOpts = json;
+}
+// بيرجّع الاختيارات المحفوظة على B.sel/B.nest، ويتجاهل بصمت أي مجموعة أو اختيار اتشال أو اتغيّر كوده من ساعة الحفظ
+// (زي لو الأدمن عدّل الأسئلة بعدين) بدل ما يبوّظ باقي الاختيارات الصحيحة أو يدّي error
+function applySelection(json, groups) {
+  let data; try { data = JSON.parse(json); } catch (e) { return null; }
+  if (!data || typeof data !== 'object') return null;
+  const byCode = new Map(groups.map(g => [g.code, g]));
+  const newSel = {}, newNest = {};
+  let applied = 0, skipped = 0;
+  Object.keys(data.sel || {}).forEach(gc => {
+    const g = byCode.get(gc); if (!g) { skipped += Object.keys(data.sel[gc] || {}).length; return; }
+    const row = {};
+    Object.keys(data.sel[gc] || {}).forEach(k => {
+      const o = g.opts.find(x => optKey(x) === k);
+      if (!o) { skipped++; return; }
+      const q = Number(data.sel[gc][k]) || 0; if (q <= 0) return;
+      row[k] = Math.min(q, oMaxE(g, o) === Infinity ? q : oMaxE(g, o));
+      applied++;
+    });
+    if (Object.keys(row).length) newSel[gc] = row;
+  });
+  const nest = nestInfo(groups);
+  Object.keys(data.nest || {}).forEach(gc => {
+    const g = byCode.get(gc); if (!g || !nest || nest.parent.code !== gc) return;
+    Object.keys(data.nest[gc] || {}).forEach(k => {
+      if (!newSel[gc] || !newSel[gc][k]) return; // الاختيار الأب نفسه اتجوهل فوق، فمفيش داعي نوزّع تحته
+      const row = {};
+      Object.keys(data.nest[gc][k] || {}).forEach(ck => {
+        const co = nest.child.opts.find(x => optKey(x) === ck);
+        if (!co) { skipped++; return; }
+        const q = Number(data.nest[gc][k][ck]) || 0; if (q > 0) { row[ck] = q; applied++; }
+      });
+      if (Object.keys(row).length) { if (!newNest[gc]) newNest[gc] = {}; newNest[gc][k] = row; }
+    });
+  });
+  B.sel = newSel; B.nest = newNest;
+  if (Number(data.qty) > 0) B.qty = Math.floor(Number(data.qty));
+  return { applied, skipped };
+}
+async function saveDefaultOpts() {
+  const it = wzItem(); if (!it) { toast('اختر صنفاً أولاً'); return; }
+  if (!MAP.items.cols.defaultOpts) { toast('عمود «الاختيارات الافتراضية» غير مربوط في شيت Items. أضفه من إعدادات الأدمن'); return; }
+  if (!Object.keys(B.sel || {}).length) { toast('اختر الاختيارات الأول قبل الحفظ كافتراضي'); return; }
+  const data = parseDefaults(it);
+  data.general = { sel: B.sel, nest: B.nest, qty: B.qty };
+  try {
+    await writeDefaults(it, data); // بيحتفظ بأي توزيعات افتراضية خاصة باختيارات (opts) متسجّلة قبل كده
+    toast('⭐ اتحفظت الاختيارات كافتراضي لـ«' + S_(it.name) + '»');
+    buildBuilder();
+  } catch (e) { toast(gsError(e)); }
+}
+function loadDefaultOpts() {
+  const it = wzItem(); if (!it) { toast('اختر صنفاً أولاً'); return; }
+  const data = parseDefaults(it);
+  if (!data.general) { toast('لا يوجد اختيار افتراضي محفوظ لهذا الصنف'); return; }
+  const r = applySelection(JSON.stringify(data.general), itemGroups(it));
+  if (!r) { toast('الاختيار الافتراضي المحفوظ تالف، احفظه تاني'); return; }
+  B.accOpen = {};
+  buildBuilder();
+  toast(r.skipped ? '📥 تم الاسترجاع (' + r.skipped + ' اختيار اتجوهل لأنه اتغيّر أو اتشال)' : '📥 تم استرجاع الاختيارات الافتراضية');
+}
+// افتراضي خاص بتوزيع التقسيم الفرعي تحت اختيار معيّن بالذات (مش افتراضي الصنف كله) — زي توزيع البذرة الافتراضي جوه «20 Pcs» عن «40 Pcs»
+async function saveOptionDefault(gc, k) {
+  const it = wzItem(); if (!it) return;
+  if (!MAP.items.cols.defaultOpts) { toast('عمود «الاختيارات الافتراضية» غير مربوط في شيت Items. أضفه من إعدادات الأدمن'); return; }
+  const nest = (B.nest[gc] || {})[k];
+  if (!nest || !Object.keys(nest).length) { toast('وزّع الاختيارات الأول قبل الحفظ كافتراضي'); return; }
+  const data = parseDefaults(it);
+  if (!data.opts) data.opts = {};
+  data.opts[k] = { nest };
+  try {
+    await writeDefaults(it, data);
+    toast('⭐ اتحفظ التوزيع الافتراضي');
+    buildBuilder();
+  } catch (e) { toast(gsError(e)); }
+}
+function loadOptionDefault(gc, k) {
+  const it = wzItem(); if (!it) return;
+  const data = parseDefaults(it);
+  const saved = data.opts && data.opts[k];
+  if (!saved || !saved.nest) { toast('لا يوجد توزيع افتراضي محفوظ لهذا الاختيار'); return; }
+  const groups = itemGroups(it), nest = nestInfo(groups);
+  if (!nest || nest.parent.code !== gc) return;
+  const row = {}; let applied = 0, skipped = 0;
+  Object.keys(saved.nest).forEach(ck => {
+    const co = nest.child.opts.find(x => optKey(x) === ck);
+    if (!co) { skipped++; return; }
+    const q = Number(saved.nest[ck]) || 0; if (q > 0) { row[ck] = q; applied++; }
+  });
+  if (!applied) { toast('التوزيع الافتراضي المحفوظ تالف، احفظه تاني'); return; }
+  if (!B.nest[gc]) B.nest[gc] = {};
+  B.nest[gc][k] = row;
+  buildBuilder();
+  toast(skipped ? '📥 تم الاسترجاع (' + skipped + ' اختيار اتجوهل لأنه اتغيّر أو اتشال)' : '📥 تم استرجاع التوزيع الافتراضي');
+}
+function defaultsBlockHTML(it) {
+  if (!it || !MAP.items.cols.defaultOpts) return '';
+  const has = !!parseDefaults(it).general;
+  return '<div class="b-defaults"><button type="button" class="btn btn-secondary" onclick="saveDefaultOpts()" title="يحفظ الاختيارات والكميات الحالية كافتراضي لهذا الصنف">⭐ حفظ كافتراضي</button>' +
+    '<button type="button" class="btn btn-secondary"' + (has ? '' : ' disabled') + ' onclick="loadDefaultOpts()" title="' + (has ? 'يرجّع الاختيارات المحفوظة كافتراضي' : 'لا يوجد افتراضي محفوظ بعد') + '">📥 استرجاع الافتراضي</button>' +
+    (has ? '<span class="cg-meta">★ لهذا الصنف افتراضي محفوظ</span>' : '') + '</div>';
 }
 
 /* Cart */
@@ -5474,7 +5669,8 @@ const TABLES = {
     { k: 'active', l: 'مفعّل', a: ['active', 'enabled', 'مفعل'] },
     { k: 'icon', l: 'الأيقونة (إيموجي أو رابط صورة، اختياري)', a: ['icon', 'emoji', 'image', 'imageurl', 'photo', 'picture', 'أيقونة', 'ايقونة', 'صورة'] },
     { k: 'note', l: 'ملاحظات', a: ['note', 'notes', 'ملاحظات', 'ملاحظة'] },
-    { k: 'grainType', l: 'نوع الحبة', a: ['graintype', 'grain', 'نوع الحبة', 'breadtype'] }
+    { k: 'grainType', l: 'نوع الحبة', a: ['graintype', 'grain', 'نوع الحبة', 'breadtype'] },
+    { k: 'defaultOpts', l: 'الاختيارات الافتراضية المحفوظة (JSON داخلي، لا تُعدَّل يدويًا)', a: ['defaultoptions', 'defaultopts', 'savedoptions', 'الاختيارات الافتراضية'] }
   ] },
   groups: { label: 'مجموعات الاختيارات', hint: 'الأسئلة مثل «How do you like your sourdough?» مع الحد الأدنى والأقصى', sheetAlias: ['groups', 'optiongroups', 'المجموعات'], fields: [
     { k: 'code', l: 'كود المجموعة', req: 1, a: ['groupcode', 'code', 'id', 'كود المجموعة'] },
@@ -5484,6 +5680,7 @@ const TABLES = {
     { k: 'min', l: 'الحد الأدنى', a: ['min', 'minimum', 'الحد الأدنى'] },
     { k: 'max', l: 'الحد الأقصى', a: ['max', 'maximum', 'الحد الأقصى'] },
     { k: 'groupCategory', l: 'تصنيف المجموعة (لتجميع التقارير)', a: ['groupcategory', 'category', 'classification', 'تصنيف المجموعة', 'التصنيف'] },
+    { k: 'nestChild', l: 'مجموعة متداخلة جواها (اختياري، كود المجموعة)', a: ['nestchild', 'nestedgroup', 'childgroup', 'المجموعة المتداخلة'] },
     { k: 'active', l: 'نشطة (اختياري)', a: ['active', 'enabled', 'نشط', 'مفعل'] }
   ] },
   options: { label: 'الاختيارات', hint: 'مثل Cut (+20) أو Uncut', sheetAlias: ['options', 'option', 'الاختيارات'], fields: [
@@ -7260,6 +7457,11 @@ const fld = (id, label, inner, wide) => '<div class="form-group"' + (wide ? ' st
 function groupSelect(id, sel) {
   return '<select id="' + id + '"><option value="">— اختر المجموعة —</option>' + DB.groups.map(g => '<option value="' + esc(g.code) + '"' + (S_(g.code) === S_(sel) ? ' selected' : '') + '>' + esc(S_(g.name) || g.code) + '</option>').join('') + '</select>';
 }
+// قايمة المجموعات اللي ممكن تتداخل جوه المجموعة الحالية (كل المجموعات ما عدا نفسها)
+function nestChildSelect(selfCode, cur) {
+  const list = DB.groups.filter(g => S_(g.code) !== S_(selfCode));
+  return '<select id="cg-nest"><option value="">— بدون —</option>' + list.map(g => '<option value="' + esc(g.code) + '"' + (S_(g.code) === S_(cur) ? ' selected' : '') + '>' + esc(S_(g.name) || g.code) + '</option>').join('') + '</select>';
+}
 
 function openCg(sec, row, pre) {
   if (!needWrite(SEC_MIN[sec])) return;
@@ -7287,6 +7489,8 @@ function openCg(sec, row, pre) {
       (c.required ? fld('cg-req', 'إجباري', '<label class="toggle-inline"><input type="checkbox" id="cg-req"' + (isNew || isOn(v.required) ? ' checked' : '') + '> يجب على الموظف الاختيار</label>') : '') +
       (c.min ? fld('cg-min', 'الحد الأدنى للاختيارات', '<input type="number" id="cg-min" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.min) + '">') : '') +
       (c.max ? fld('cg-max', 'الحد الأقصى للاختيارات', '<input type="number" id="cg-max" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.max) + '">') : '') +
+      (c.nestChild ? fld('cg-nest', 'مجموعة متداخلة جواها (اختياري)', nestChildSelect(isNew ? '' : v.code, isNew ? '' : S_(v.nestChild))) +
+        '<div class="hint" style="grid-column:1/-1">لو اخترت مجموعة هنا، هتظهر متداخلة جوه اختيارات المجموعة دي (بدل ما تظهر مستقلة) في شاشة الطلب — تنفع لحالات زي «حجم الطلب» وتحته «نوع الخبز». لازم المجموعتين مربوطين بنفس الصنف من تاب «الربط».</div>' : '') +
       (c.active ? fld('cg-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cg-active"' + (isNew || isOn(v.active) ? ' checked' : '') + '> مجموعة مفعّلة</label>') : '');
   } else if (sec === 'options') {
     title = isNew ? 'إضافة اختيار' : 'تعديل الاختيار';
@@ -7455,6 +7659,13 @@ async function saveCg() {
       if ($('cg-req')) vals.required = boolVal(DB.groups.map(g => g.required), $('cg-req').checked);
       if ($('cg-min')) vals.min = min;
       if ($('cg-max')) vals.max = max;
+      if ($('cg-nest')) {
+        const nc = $('cg-nest').value.trim();
+        if (nc && !isNew && nc === row.code) return fail('مينفعش المجموعة تتداخل جوه نفسها');
+        // منع التداخل الدائري: المجموعة المختارة ميبقاش هي نفسها متداخلة جوه المجموعة الحالية (دايرة من اتنين)
+        if (nc && !isNew && DB.groups.some(g => S_(g.code) === nc && nk(S_(g.nestChild)) === nk(row.code))) return fail('هذه المجموعة متداخلة بالفعل جوه المجموعة الحالية — لازم تشيل التداخل منها الأول');
+        vals.nestChild = nc;
+      }
       if ($('cg-active')) vals.active = activeValue($('cg-active').checked, 'groups');
       if (isNew) await appendRow('groups', vals); else await updRow('groups', { code: row.code }, vals);
     } else if (sec === 'options') {
