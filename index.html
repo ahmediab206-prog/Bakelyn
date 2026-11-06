@@ -2730,6 +2730,7 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
             <div class="sn-item" data-sec="users" data-perm="settings:v" tabindex="0" onclick="setSec('users')">👥 المستخدمون</div>
             <div class="sn-item" data-sec="prefs" tabindex="0" onclick="setSec('prefs')">🎨 التفضيلات</div>
             <div class="sn-item" data-sec="messages" tabindex="0" onclick="setSec('messages')">✉️ رسائل النسخ</div>
+            <div class="sn-item" data-sec="rpsec" tabindex="0" onclick="setSec('rpsec')">📊 تخصيص التقارير</div>
             <div class="sn-item" data-sec="taborder" tabindex="0" onclick="setSec('taborder')">↕️ ترتيب التابات</div>
             <div class="sn-item" data-sec="log" data-perm="log:v" tabindex="0" onclick="setSec('log')">🧾 سجل الحركات</div>
           </div>
@@ -2853,6 +2854,21 @@ body.ui-mobile table.data-table td[colspan]::before { content: none; }
                 <div class="msg-preview-box">
                   <h4>معاينة</h4>
                   <pre id="msg-preview"></pre>
+                </div>
+              </div>
+            </div>
+
+            <div id="set-rpsec" hidden>
+              <div class="setting-section">
+                <h3>تخصيص شاشة «قائمة التحضير» (التقارير)</h3>
+                <p class="hint" style="margin:0 0 8px">حدّد أنهي كروت تظهر في شاشة «التقارير ← قائمة التحضير». أي تصنيف مجموعات جديد تضيفه بعد كده هيظهر هنا تلقائي وهيبقى ظاهر بالتقرير افتراضيًا لحد ما تشيله.</p>
+                <p class="hint" id="rpsec-sync-hint" style="margin:0 0 14px"></p>
+                <div id="rpsec-fixed" class="cg-checks" style="margin-bottom:16px"></div>
+                <h4 style="font-size:13px;margin-bottom:8px">تصنيفات المجموعات</h4>
+                <div id="rpsec-cats" class="cg-checks"></div>
+                <div class="form-actions" style="margin-top:16px;justify-content:flex-start">
+                  <button class="btn btn-primary btn-sm" data-perm="admin:e" onclick="rpSecSave()">حفظ</button>
+                  <button class="btn btn-secondary btn-sm" data-perm="admin:e" onclick="rpSecResetDefault()">استرجاع الشكل الافتراضي</button>
                 </div>
               </div>
             </div>
@@ -3049,7 +3065,7 @@ function handle_(params, body) {
     var um = userMap_(cfg);
     var secured = builtin_().length > 0 || (!!um && hasUsers_(um));
 
-    if (action === 'status') return json_({ ok: true, v: 15, secured: secured, configured: !!um, admins: builtin_().length });
+    if (action === 'status') return json_({ ok: true, v: 16, secured: secured, configured: !!um, admins: builtin_().length });
     if (action === 'login') return json_(login_(body, um, secured, cfg));
 
     // في وضع الإعداد (لا يوجد مستخدمون بعد) يكون user = null وكل الإجراءات مسموحة
@@ -3586,7 +3602,7 @@ function init_(user, cfg) {
     var sh = ss_().getSheetByName(m[t].sheet);
     if (allowed && sh && !data[m[t].sheet]) data[m[t].sheet] = { headers: headers_(sh), rows: rows_(sh, 0) };
   });
-  return { ok: true, mapping: m, msgTpl: cfg.msgTpl || null, user: user ? pub_(user) : null, data: data };
+  return { ok: true, mapping: m, msgTpl: cfg.msgTpl || null, rpSections: cfg.rpSections || null, user: user ? pub_(user) : null, data: data };
 }
 
 function rows_(sh, limit) {
@@ -3846,7 +3862,7 @@ function delete_(b, user, cfg) {
 
 <script>
 // ⇩ استبدل هذا السطر بالسطر الذي تنسخه من: إعدادات الأدمن ← تثبيت الإعدادات في الموقع
-const DEFAULT_CONFIG = {"scriptUrl":"https://script.google.com/macros/s/AKfycbzKBAuGgnzv0PoZ31UKE1gogdVHTomzVD1xRkuoGJ5fD0jWtWaUvbg3WZfsx01nhrgqjA/exec","key":""};
+const DEFAULT_CONFIG = { scriptUrl: "", key: "", mapping: {} };
 // أدمن محلي: يدخل الموقع مباشرة بدون أي اتصال بالشيت (لإعداد الربط). كلمة المرور ظاهرة في هذا الملف، فلا ترفعه لمكان عام.
 const LOCAL_ADMINS = [{ username: 'AA', password: '20236', name: 'المدير العام' }];
 
@@ -4135,7 +4151,7 @@ const MSG_TPL_DEFAULT = {
 };
 // شكل افتراضي لأي تصنيف مجموعات (بذرة، حشو، ...) — قائمة التصنيفات ديناميكية من شيت Data فمفيش شكل افتراضي لكل واحد بالاسم،
 // وبيتظبط تلقائياً باسم التصنيف نفسه عبر {التصنيف}
-const CAT_TPL_DEFAULT = { header: '🧺 إجمالي {التصنيف} {الفترة}\n', line: '>> {الكمية} - {الاختيار}{التفصيل}{تفصيل مرتبط}' };
+const CAT_TPL_DEFAULT = { header: '🧺 إجمالي {التصنيف} {الفترة}\n', line: '>> {الكمية} - {الاختيار}{تفصيل مرتبط}' };
 function catTpl(name) { return (MSG_TPL.cats && MSG_TPL.cats[name]) || CAT_TPL_DEFAULT; }
 // groupId ممكن يكون bread/items/options الثابتين، أو 'cat:اسم التصنيف' لأي تصنيف مجموعات ديناميكي
 const isCatGroup = g => typeof g === 'string' && g.indexOf('cat:') === 0;
@@ -4159,6 +4175,70 @@ let MSG_TPL = loadMsgTpl();
 let MSG_TPL_SHARED = false; // true لما الشكل الحالي يكون جاي من الشيت (مشترك لكل اللي بيستخدموا الموقع)، مش من الجهاز بس
 let MSG_SEL_GROUP = 'bread';
 let MSG_FOCUS_FIELD = 'msg-header';
+
+/* ───────── تخصيص شاشة «قائمة التحضير» (أي كروت تظهر) — تحكم كامل للأدمن من الإعدادات ───────── */
+// الإعداد الافتراضي لو الأدمن لسه ما فتحش الإعداد ده وحفظ حاجة بنفسه — بيطابق الشكل الحالي (عشان محدش يتفاجئ بتغيير مفاجئ):
+// الإجمالي + الأصناف + أنواع الحبة + تصنيف «الحشو» بس + الطلبات، وباقي التصنيفات وكارت «الاختيارات جوه البوكسات» مخفيين
+const RP_SECTIONS_DEFAULT = { kpis: true, items: true, bread: true, options: false, orders: true, cats: { 'الحشو': true } };
+function loadRpSections() {
+  try { const s = lsGet(LS_RPSEC); if (s) return JSON.parse(s); } catch (e) {}
+  return null; // null = معندناش إعداد محفوظ لسه (من الشيت ولا من الجهاز) → استخدم RP_SECTIONS_DEFAULT
+}
+let RP_SECTIONS = loadRpSections();
+let RP_SECTIONS_SHARED = false; // true لما الإعداد الحالي يكون جاي من الشيت (مشترك لكل اللي بيستخدموا الموقع)، مش من الجهاز بس
+// بيرجع هل سكشن/تصنيف معيّن يظهر في شاشة التحضير. key: 'kpis'|'items'|'bread'|'options'|'orders' أو 'cat:اسم التصنيف'
+function rpSecOn(key) {
+  if (!RP_SECTIONS) {
+    if (key.indexOf('cat:') === 0) return nk(key.slice(4)) === nk('الحشو');
+    return RP_SECTIONS_DEFAULT[key] !== false;
+  }
+  if (key.indexOf('cat:') === 0) {
+    const name = key.slice(4), cats = RP_SECTIONS.cats || {};
+    const entry = Object.keys(cats).find(c => nk(c) === nk(name));
+    return entry ? cats[entry] !== false : true; // تصنيف جديد لسه ما اتظبطش صراحة = ظاهر افتراضيًا
+  }
+  return RP_SECTIONS[key] !== false;
+}
+function rpSecFixedDefs() { return [['kpis', 'الإجمالي (عدد الطلبات، قطع الأصناف، قطع الاختيارات)'], ['items', 'الأصناف'], ['bread', 'أنواع الحبة'], ['options', 'الاختيارات (جوه البوكسات)'], ['orders', 'الطلبات']]; }
+function renderRpSecUI() {
+  const fixedBox = $('rpsec-fixed');
+  if (fixedBox) fixedBox.innerHTML = rpSecFixedDefs().map(([k, l]) => '<label class="cg-check"><input type="checkbox" data-rpsec="' + k + '"' + (rpSecOn(k) ? ' checked' : '') + '> <span>' + esc(l) + '</span></label>').join('');
+  const catBox = $('rpsec-cats'), cats = msgCatList();
+  if (catBox) catBox.innerHTML = cats.length ? cats.map(c => '<label class="cg-check"><input type="checkbox" data-rpsec-cat="' + esc(c) + '"' + (rpSecOn('cat:' + c) ? ' checked' : '') + '> <span>تصنيف: ' + esc(c) + '</span></label>').join('') : '<div class="cg-meta">لا توجد تصنيفات مجموعات بعد (تاب «التصنيفات والخيارات» ← «تصنيف المجموعات»).</div>';
+  rpSecSyncHint();
+}
+function rpSecSyncHint() {
+  const el = $('rpsec-sync-hint'); if (!el) return;
+  if (!CFG.scriptUrl) { el.textContent = 'اربط الشيت أولاً من إعدادات الأدمن عشان تقدر تحفظ الإعداد ده.'; el.className = 'hint'; return; }
+  if (!can('admin', 'e')) { el.textContent = 'التعديل والحفظ هنا للأدمن بس. باقي المستخدمين بيشوفوا نفس التقرير المحفوظ.'; el.className = 'hint'; return; }
+  if (!srvOk(16)) { el.textContent = '📍 الحفظ دلوقتي بيتم على جهازك بس. عشان الإعداد ده يتحفظ ويظهر لأي حد بيفتح الموقع من أي جهاز، حدّث كود Apps Script (الصق الكود الجديد من «كود Google Apps Script» في إعدادات الأدمن) وانشر نسخة جديدة.'; el.className = 'hint'; return; }
+  el.textContent = RP_SECTIONS_SHARED ? '✅ الإعداد ده مشترك: أي حد بيفتح الموقع هيشوف نفس كروت التقرير.' : '📍 لسه محفوظ على جهازك بس (أو ما اتحفظش حاجة لسه وده الشكل الافتراضي). اضغط «حفظ» عشان يبقى مشترك لكل اللي بيستخدموا الموقع.';
+  el.className = 'hint';
+}
+async function rpSecSave() {
+  const cfg = { kpis: true, items: true, bread: true, options: true, orders: true, cats: {} };
+  document.querySelectorAll('#rpsec-fixed [data-rpsec]').forEach(el => { cfg[el.dataset.rpsec] = el.checked; });
+  document.querySelectorAll('#rpsec-cats [data-rpsec-cat]').forEach(el => { cfg.cats[el.dataset.rpsecCat] = el.checked; });
+  RP_SECTIONS = cfg;
+  lsSet(LS_RPSEC, JSON.stringify(cfg));
+  if (CUR === 'reports') renderReport();
+  if (!CFG.scriptUrl || !can('admin', 'e') || !srvOk(16)) { RP_SECTIONS_SHARED = false; renderRpSecUI(); toast(!CFG.scriptUrl || !can('admin', 'e') ? 'اتحفظ على جهازك بس' : '📍 اتحفظ على جهازك بس. حدّث كود Apps Script عشان يتحفظ للجميع'); return; }
+  try {
+    const cur = (await gsCall('ping')).config || {};
+    await gsCall('setConfig', { config: Object.assign({}, cur, { rpSections: cfg, savedAt: new Date().toISOString() }) });
+    RP_SECTIONS_SHARED = true;
+    renderRpSecUI();
+    toast('✅ اتحفظ ومشترك لكل اللي بيستخدموا الموقع');
+  } catch (e) { toast(gsError(e)); }
+}
+function rpSecResetDefault() {
+  RP_SECTIONS = null;
+  lsDel(LS_RPSEC);
+  RP_SECTIONS_SHARED = false;
+  renderRpSecUI();
+  if (CUR === 'reports') renderReport();
+  toast('اترجع الشكل الافتراضي (محلي بس لحد ما تضغط «حفظ»)');
+}
 const MSG_SAMPLE_ROWS = {
   bread: [{ name: 'كور - ٢٢ جم', qty: 12 }, { name: 'فطير مينيز', qty: 5 }],
   items: [{ name: 'كرواسون زبدة', qty: 8 }, { name: 'فينو', qty: 3 }],
@@ -4493,19 +4573,23 @@ function rpPrep() {
   const catCopyBtn = c => '<button type="button" class="btn btn-secondary rp-copy-btn no-print" data-cat="' + esc(c) + '" onclick="copyPrepGroup(\'cat:\'+this.dataset.cat)">📋 نسخ رسالة</button>';
   const catBreakdownHtml = x => {
     const lines = [];
-    if (x.byItem && x.byItem.length > 1) lines.push(x.byItem.map(bi => fmtN(bi.qty) + ' ' + esc(bi.name)).join(' · '));
     if (x.byLinked && x.byLinked.length) lines.push('🔗 ' + x.byLinked.map(bl => fmtN(bl.qty) + ' ' + esc(bl.name)).join(' · '));
     return lines.length ? '<div class="cg-meta" style="font-size:12px;margin-top:3px">' + lines.join('<br>') + '</div>' : '';
   };
-  const catCards = catNames.map(c => rpCard('تصنيف: ' + esc(c), rpTable(['الاختيار', 'الكمية'], catData[c].map(x => [esc(x.name) + catBreakdownHtml(x), '<b>' + fmtN(x.qty) + '</b>'])), null, catCopyBtn(c))).join('');
-  return rpKpis([['عدد الطلبات', os.length, pick + ' استلام · ' + (os.length - pick) + ' توصيل'], ['قطع الأصناف', fmtN(itemRows.reduce((s, x) => s + x.qty, 0))], ['قطع الاختيارات', fmtN(optRows.reduce((s, x) => s + x.qty, 0))]]) +
-    '<div class="rp-grid">' +
-    rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('items')")) +
-    rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('bread')")) +
-    '</div>' +
-    rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('options')")) +
+  // شاشة «التحضير»: أنهي كروت تظهر فيها متحكم فيه بالكامل من الإعدادات ← «تخصيص التقارير» (rpSecOn)، مش مثبّت في الكود.
+  // باقي التصنيفات وقايمة الاختيارات لسه محسوبة دايمًا في catData/RP_PREP_DATA عشان رسائل النسخ (📋) في أماكن تانية تفضل شغالة،
+  // بغض النظر هل كارتها ظاهر هنا ولا لأ
+  const visibleCatNames = catNames.filter(c => rpSecOn('cat:' + c));
+  const catCards = visibleCatNames.map(c => rpCard('تصنيف: ' + esc(c), rpTable(['الاختيار', 'الكمية'], catData[c].map(x => [esc(x.name) + catBreakdownHtml(x), '<b>' + fmtN(x.qty) + '</b>'])), null, catCopyBtn(c))).join('');
+  const gridParts = [
+    rpSecOn('items') ? rpCard('الأصناف', rpTable(['الصنف', 'الكمية'], itemRows.map(x => ['<span class="rp-ic">' + itemIconFor(x.name) + '</span> ' + esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('items')")) : '',
+    rpSecOn('bread') ? rpCard('أنواع الحبة', rpTable(['النوع', 'الكمية'], breadRows.map(x => ['🍞 ' + esc(x[0]), '<b>' + fmtN(x[1].qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('bread')")) : ''
+  ].filter(Boolean).join('');
+  return (rpSecOn('kpis') ? rpKpis([['عدد الطلبات', os.length, pick + ' استلام · ' + (os.length - pick) + ' توصيل'], ['قطع الأصناف', fmtN(itemRows.reduce((s, x) => s + x.qty, 0))], ['قطع الاختيارات', fmtN(optRows.reduce((s, x) => s + x.qty, 0))]]) : '') +
+    (gridParts ? '<div class="rp-grid">' + gridParts + '</div>' : '') +
+    (rpSecOn('options') ? rpCard('الاختيارات (جوه البوكسات)', rpTable(['المجموعة', 'الاختيار', 'الكمية'], optRows.map(x => ['<span class="cg-meta">' + esc(x.group || '—') + '</span>', esc(x.name), '<b>' + fmtN(x.qty) + '</b>'])), null, rpCopyBtn("copyPrepGroup('options')")) : '') +
     catCards +
-    rpCard('الطلبات', rpTable(['#', 'التسليم', 'العميل', 'الأصناف', 'الحالة', 'الباقي'], os.map(o => ['<a href="#" onclick="nav(\'orders\');openOrder(' + oid(o) + ');return false">' + esc(o.id) + '</a>', fmtDate(o.date) + ' · ' + (o.deliver === 'توصيل' ? '🚚 ' + esc(o.address || '') : '🏪 استلام'), esc(o.customer), esc(o.items.map(i => i.qty + '× ' + i.name).join('، ')), '<span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span>', totals(o).rem > 0 ? '<b class="rp-due">' + money(totals(o).rem) + '</b>' : '<span class="tag tag-paid">مدفوع</span>'])));
+    (rpSecOn('orders') ? rpCard('الطلبات', rpTable(['#', 'التسليم', 'العميل', 'الأصناف', 'الحالة', 'الباقي'], os.map(o => ['<a href="#" onclick="nav(\'orders\');openOrder(' + oid(o) + ');return false">' + esc(o.id) + '</a>', fmtDate(o.date) + ' · ' + (o.deliver === 'توصيل' ? '🚚 ' + esc(o.address || '') : '🏪 استلام'), esc(o.customer), esc(o.items.map(i => i.qty + '× ' + i.name).join('، ')), '<span class="pill ' + STATUS[o.status].pill + '">' + STATUS[o.status].label + '</span>', totals(o).rem > 0 ? '<b class="rp-due">' + money(totals(o).rem) + '</b>' : '<span class="tag tag-paid">مدفوع</span>']))) : '');
 }
 
 // 2) المديونيات: لكل عميل
@@ -4832,7 +4916,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 /* ───────── Add order: wizard ───────── */
 let cart = [];
 let deliver = 'استلام';
-const B = { code: '', sel: {}, qty: 1, cat: 'all', q: '', accOpen: {}, nest: {} };
+const B = { code: '', sel: {}, qty: 1, cat: 'all', q: '', accOpen: {}, nest: {}, nestDeep: {} };
 let PICK = null;          // العميل المختار (صف من شيت Clients)
 let CP_LIST = [], WZ_LIST = [];
 
@@ -4981,29 +5065,75 @@ const gTotal = gc => Object.values(B.sel[gc] || {}).reduce((s, q) => s + q, 0);
 // تداخل المجموعات: صندوق بكمية (مجموعة multi، زي الحشو) مربوط بصنف وبه مجموعة ثانية بتصنيف مختلف (زي البذرة)
 // بيخلي كل اختيار محدد كميته في المجموعة الأولى يظهر تحته تقسيم فرعي من اختيارات المجموعة الثانية، لازم يساوي نفس الكمية
 // (مفعّل بس لما يكون فيه مجموعة multi واحدة بالضبط للصنف، ومجموعة ثانية ليها تصنيف مختلف — غير كده كل المجموعات تفضل عادية ومستقلة)
-function nestInfo(groups) {
-  // أولوية: إعداد صريح من تاب «المجموعات» (مجموعة متداخلة جواها) — بيدي تحكم كامل في مين الأب ومين الابن
-  // بدل ما يتحدد تلقائي بس من نوع المجموعة (متعدد/واحد)، عشان حالات زي "حجم الطلب" (اختيار واحد) اللي عايز يبقى هو البره
-  // وتحته تتداخل مجموعة "نوع الخبز" (متعدد)، وده عكس الوضع الافتراضي القديم
-  for (const p of (groups || [])) {
-    const cc = S_(p.nestChild); if (!cc) continue;
+// قيمة خاصة في عمود «Nest Child» معناها: امنع التداخل التلقائي لهذه المجموعة بالذات،
+// حتى لو انطبق عليها شرط الوضع الافتراضي (مجموعة متعدد وحيدة + مجموعة تانية بتصنيف مختلف على نفس الصنف)
+const NEST_NONE = '__none__';
+// تسلسل التداخل الكامل للصنف: بيرجّع مصفوفة المجموعات من الخارج للداخل (مجموعة أ تتداخل فيها ب، ب تتداخل فيها ج...)
+// أو null لو مفيش تداخل خالص. بيدعم أي عدد مستويات طالما متظبطة صراحة من عمود «مجموعة متداخلة جواها» في تاب المجموعات
+// (مثلاً: حجم الصندوق ← توزيع اللحمة ← توزيع نوع الخبز لكل نوع لحمة على حدة)
+function nestChain(groups) {
+  const childOf = new Map();
+  (groups || []).forEach(p => {
+    const cc = S_(p.nestChild); if (!cc || cc === NEST_NONE) return;
     const child = groups.find(g => g.code !== p.code && nk(S_(g.code)) === nk(cc));
-    if (child) return { parent: p, child };
+    if (child) childOf.set(nk(S_(p.code)), child);
+  });
+  if (childOf.size) {
+    const childCodes = new Set(Array.from(childOf.values()).map(c => nk(S_(c.code))));
+    const root = (groups || []).find(g => childOf.has(nk(S_(g.code))) && !childCodes.has(nk(S_(g.code))));
+    if (root) {
+      const chain = [root], seen = new Set([nk(S_(root.code))]);
+      let cur = root;
+      while (childOf.has(nk(S_(cur.code)))) {
+        const nxt = childOf.get(nk(S_(cur.code)));
+        if (seen.has(nk(S_(nxt.code)))) break; // حماية من حلقة دائرية لو الإعداد غلط
+        chain.push(nxt); seen.add(nk(S_(nxt.code))); cur = nxt;
+      }
+      if (chain.length > 1) return chain;
+    }
   }
-  // الوضع الافتراضي (لو مفيش إعداد صريح): مجموعة متعدد واحدة بس + مجموعة تانية بتصنيف مختلف — زي ما كان دايماً
+  // الوضع الافتراضي (لو مفيش إعداد صريح): مجموعة متعدد واحدة بس + مجموعة تانية بتصنيف مختلف — زي ما كان دايماً (مستوى واحد بس)
   const multis = (groups || []).filter(g => g.multi);
   if (multis.length !== 1) return null;
   const p = multis[0];
+  if (S_(p.nestChild) === NEST_NONE) return null; // الأدمن منع التداخل التلقائي صراحةً لهذه المجموعة
   if (!S_(p.groupCategory)) return null;
   const child = groups.find(g => g.code !== p.code && S_(g.groupCategory) && nk(g.groupCategory) !== nk(p.groupCategory));
-  return child ? { parent: p, child } : null;
+  return child ? [p, child] : null;
 }
-const nestSel = (gc, k) => { const m = B.nest[gc] || (B.nest[gc] = {}); return m[k] || (m[k] = {}); };
-const nestTotal = (gc, k) => Object.values(nestSel(gc, k)).reduce((s, q) => s + q, 0);
-function nestClear(gc, k) { if (B.nest[gc]) delete B.nest[gc][k]; }
+// واجهة توافق قديمة: أول حلقتين بس في السلسلة (زي ما كانت الدالة بترجع قبل دعم تعدد المستويات)، مع إرفاق السلسلة كاملة لمن يحتاجها
+function nestInfo(groups) {
+  const chain = nestChain(groups);
+  return chain ? { parent: chain[0], child: chain[1], chain } : null;
+}
+// "المسار" بيحدد مكانك جوه سلسلة التداخل: مصفوفة {gc,k} = كود مجموعة + مفتاح الاختيار المحدد فيها، من الخارج للمستوى المطلوب
+// المستوى الأول (مسار بعنصر واحد) بيتخزن بنفس شكل B.nest[gc][k] القديم (توافقاً مع أي افتراضيات محفوظة على الشيت من قبل)،
+// وأي مستوى أعمق (مسار بعنصرين فأكتر) بيتخزن في B.nestDeep بمفتاح مركّب، عشان ندعم أي عمق من غير ما نكسر القديم
+function nestPathKey(path) { return path.map(p => p.gc + '\u0001' + p.k).join('\u0002'); }
+function nestSel(path) {
+  if (path.length === 1) { const gc = path[0].gc, k = path[0].k; const m = B.nest[gc] || (B.nest[gc] = {}); return m[k] || (m[k] = {}); }
+  if (!B.nestDeep) B.nestDeep = {};
+  const key = nestPathKey(path);
+  return B.nestDeep[key] || (B.nestDeep[key] = {});
+}
+const nestTotal = path => Object.values(nestSel(path)).reduce((s, q) => s + q, 0);
+// بيستبدل توزيع مسار معيّن بالكامل (مش بيضيف فوق القديم) — مستخدمة لما نسترجع توزيع افتراضي محفوظ
+function nestSetSel(path, row) {
+  if (path.length === 1) { const gc = path[0].gc, k = path[0].k; if (!B.nest[gc]) B.nest[gc] = {}; B.nest[gc][k] = row; }
+  else { if (!B.nestDeep) B.nestDeep = {}; B.nestDeep[nestPathKey(path)] = row; }
+}
+function nestClear(path) {
+  if (path.length === 1) { const gc = path[0].gc, k = path[0].k; if (B.nest[gc]) delete B.nest[gc][k]; }
+  else if (B.nestDeep) { delete B.nestDeep[nestPathKey(path)]; }
+  // امسح كمان أي توزيعات أعمق كانت متفرّعة من المسار ده (لو الاختيار الأب اتغيّر أو اتشال)
+  if (B.nestDeep) {
+    const prefix = nestPathKey(path) + '\u0002';
+    Object.keys(B.nestDeep).forEach(kk => { if (kk.indexOf(prefix) === 0) delete B.nestDeep[kk]; });
+  }
+}
 // بيقلّم التقسيم الفرعي لما كمية الاختيار الأصلي تقل عن إجمالي المقسوم عليه (بيشيل من آخر اختيار فرعي أولاً)
-function trimNest(gc, k, q) {
-  const sel = B.nest[gc] && B.nest[gc][k]; if (!sel) return;
+function trimNest(path, q) {
+  const sel = nestSel(path);
   const keys = Object.keys(sel);
   let used = keys.reduce((s, x) => s + sel[x], 0);
   for (let i = keys.length - 1; i >= 0 && used > q; i--) {
@@ -5012,26 +5142,52 @@ function trimNest(gc, k, q) {
     if (sel[keys[i]] <= 0) delete sel[keys[i]];
   }
 }
+// بيفرد اختيارات مجموعة واحدة (والسلسلة المتداخلة جواها لو فيه) لصفوف مسطحة. idx = مكان g في chain (0 = الجذر).
+// path = المسار اللي وصلنا بيه لتوزيع g نفسها (فاضي للجذر). accPrice = مجموع أسعار كل المستويات اللي فاتت.
+// القاعدة: لو فيه مستوى تداخل تالت فعّال (grandchild) تحت اختيار معيّن، الصف بينسب لمجموعة الاختيار ده (مش الجد) عشان
+// نحافظ على تمييزه في التقارير (زي توزيع اللحمة)؛ لو مفيش غير مستوى واحد بيتداخل، السلوك زي الأصلي بالظبط (الصف بينسب للأب).
+function flattenGroup(g, selMap, chain, idx, path, accPrice) {
+  const out = [];
+  const child = chain[idx + 1];
+  Object.keys(selMap || {}).forEach(k => {
+    const o = g.opts.find(x => optKey(x) === k), q = selMap[k];
+    if (!o || !(q > 0)) return;
+    const qty = idx === 0 ? (g.multi ? q : q * BQ()) : q;
+    const price = accPrice + (Number(o.price) || 0);
+    if (child) {
+      const subPath = path.concat([{ gc: g.code, k }]);
+      const sub = nestSel(subPath), subKeys = Object.keys(sub).filter(ck => sub[ck] > 0);
+      if (subKeys.length) {
+        const grandchild = chain[idx + 2];
+        if (grandchild) {
+          subKeys.forEach(ck => {
+            const co = child.opts.find(x => optKey(x) === ck);
+            if (co) out.push(...flattenGroup(child, { [ck]: sub[ck] }, chain, idx + 1, subPath, price));
+          });
+        } else {
+          subKeys.forEach(ck => {
+            const co = child.opts.find(x => optKey(x) === ck);
+            if (co) out.push({ group: g.name, name: S_(o.name), price: price + (Number(co.price) || 0), qty: sub[ck], bread: S_(co.breadType) });
+          });
+        }
+        return;
+      }
+    }
+    out.push({ group: g.name, name: S_(o.name), price, qty, bread: S_(o.breadType) });
+  });
+  return out;
+}
 function selOpts(groups) {
-  const nest = nestInfo(groups);
+  const chain = nestChain(groups);
+  const nestedCodes = chain ? new Set(chain.slice(1).map(x => nk(S_(x.code)))) : null;
   const out = [];
   groups.forEach(g => {
-    if (nest && g.code === nest.child.code) return;   // المجموعة الثانية بتتعرض متداخلة تحت الأولى، مش كبلوك مستقل
+    if (nestedCodes && nestedCodes.has(nk(S_(g.code)))) return; // عضو مش جذر في سلسلة التداخل، بيتعرض جوه flattenGroup
+    if (chain && nk(S_(g.code)) === nk(S_(chain[0].code))) { out.push(...flattenGroup(g, B.sel[g.code] || {}, chain, 0, [], 0)); return; }
     Object.keys(B.sel[g.code] || {}).forEach(k => {
       const o = g.opts.find(x => optKey(x) === k), q = B.sel[g.code][k];
       if (!o || !(q > 0)) return;
-      const qty = g.multi ? q : q * BQ();
-      if (nest && g.code === nest.parent.code) {
-        const sub = nestSel(g.code, k), subKeys = Object.keys(sub).filter(ck => sub[ck] > 0);
-        if (subKeys.length) {
-          subKeys.forEach(ck => {
-            const co = nest.child.opts.find(x => optKey(x) === ck);
-            if (co) out.push({ group: g.name, name: S_(o.name), price: (Number(o.price) || 0) + (Number(co.price) || 0), qty: sub[ck], bread: S_(co.breadType) });
-          });
-          return;
-        }
-      }
-      out.push({ group: g.name, name: S_(o.name), price: Number(o.price) || 0, qty, bread: S_(o.breadType) });
+      out.push({ group: g.name, name: S_(o.name), price: Number(o.price) || 0, qty: g.multi ? q : q * BQ(), bread: S_(o.breadType) });
     });
   });
   return out;
@@ -5073,59 +5229,86 @@ function pillHTML(g, o) {
     esc(o.name) + (Number(o.price) ? ' <small>+' + fmtPrice(o.price) + '</small>' : '') +
     '</div>';
 }
-function rowHTML(g, o, child) {
+function rowHTML(g, o, chain, idx) {
   const k = optKey(o), q = (B.sel[g.code] || {})[k] || 0, mx = oMaxE(g, o), on = q > 0;
   const range = mx === Infinity ? (oMin(o) > 1 ? 'من ' + oMin(o) : '') : mx > 1 ? (oMin(o) > 1 ? oMin(o) + '–' + mx : 'حتى ' + mx) : '';
   const sub = [S_(o.breadType) ? '🍞 ' + esc(S_(o.breadType)) : '', Number(o.price) ? '+' + fmtPrice(o.price) + ' للقطعة' : '', range ? 'كمية ' + range : ''].filter(Boolean).join(' · ');
+  const hasNest = chain && idx + 1 < chain.length;
   return '<div class="b-orow' + (on ? ' on' : '') + '">' +
     '<div class="b-orow-info"><div class="b-orow-nm">' + esc(o.name) + '</div>' + (sub ? '<div class="b-orow-sub">' + sub + '</div>' : '') + '</div>' +
     '<span class="oq"><button type="button" aria-label="إنقاص"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',-1)">−</button><b>' + q + '</b><button type="button" aria-label="زيادة"' + (mx !== Infinity && q >= mx ? ' disabled' : '') + ' onclick="bOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',1)">+</button>' +
     '<button type="button" class="oq-max" aria-label="أقصى كمية"' + (mx === Infinity || q >= mx ? ' disabled' : '') + ' onclick="bOptMax(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="أقصى كمية مسموحة">أقصى</button>' +
     '<button type="button" class="oq-zero" aria-label="تصفير الكمية"' + (q <= 0 ? ' disabled' : '') + ' onclick="bOptZero(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="تصفير">0</button></span>' +
-    '</div>' + (child && on ? nestBlockHTML(g, o, child) : '');
+    '</div>' + (hasNest && on ? nestBlockHTML(chain, idx, [], o) : '');
 }
-// تقسيم فرعي تحت اختيار محدد كميته في مجموعة الصندوق: يوزّع نفس الكمية على اختيارات مجموعة ثانية بتصنيف مختلف (زي البذرة)
-function nestBlockHTML(g, o, child) {
-  const k = optKey(o), q = (B.sel[g.code] || {})[k] || 0, sel = nestSel(g.code, k), used = nestTotal(g.code, k);
+// تقسيم فرعي تحت اختيار معيّن: يوزّع كميته على اختيارات المجموعة التالية في سلسلة التداخل، وبيدعم تداخل أعمق من مستوى واحد
+// (زي: وزّع «حجم الصندوق» على أنواع اللحمة، وجوه كل نوع لحمة وزّع كمان على نوع الخبز) بعرض بلوك متداخل تحت كل صف فيه كمية
+// chain/idx: g=chain[idx] هي اللي بنوزّع تحت اختيارها (o)؛ ancestorPath: مسار كل المستويات اللي فوق g نفسها
+function nestBlockHTML(chain, idx, ancestorPath, o) {
+  const g = chain[idx], child = chain[idx + 1];
+  const k = optKey(o);
+  const path = ancestorPath.concat([{ gc: g.code, k }]);
+  const q = idx === 0 ? ((B.sel[g.code] || {})[k] || 0) : (nestSel(ancestorPath)[k] || 0);
+  const sel = nestSel(path), used = nestTotal(path);
+  const hasDeeper = idx + 2 < chain.length;
+  const pk = nestPathKey(path);
   const rows = child.opts.map(co => {
     const ck = optKey(co), cq = sel[ck] || 0;
-    return '<div class="b-nest-row' + (cq > 0 ? ' on' : '') + '"><span class="b-nest-nm">' + esc(co.name) + '</span>' +
-      '<span class="oq"><button type="button" aria-label="إنقاص"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',-1)">−</button><b>' + cq + '</b><button type="button" aria-label="زيادة"' + (used >= q ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\',1)">+</button>' +
-      '<button type="button" class="oq-max" aria-label="أقصى كمية"' + (used >= q ? ' disabled' : '') + ' onclick="nOptMax(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\')" title="أقصى كمية متاحة من الباقي">أقصى</button>' +
-      '<button type="button" class="oq-zero" aria-label="تصفير الكمية"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptZero(\'' + esc(g.code) + '\',\'' + esc(k) + '\',\'' + esc(ck) + '\')" title="تصفير">0</button></span></div>';
+    const rowH = '<div class="b-nest-row' + (cq > 0 ? ' on' : '') + '"><span class="b-nest-nm">' + esc(co.name) + '</span>' +
+      '<span class="oq"><button type="button" aria-label="إنقاص"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(pk) + '\',\'' + esc(ck) + '\',-1)">−</button><b>' + cq + '</b><button type="button" aria-label="زيادة"' + (used >= q ? ' disabled' : '') + ' onclick="nOptQ(\'' + esc(pk) + '\',\'' + esc(ck) + '\',1)">+</button>' +
+      '<button type="button" class="oq-max" aria-label="أقصى كمية"' + (used >= q ? ' disabled' : '') + ' onclick="nOptMax(\'' + esc(pk) + '\',\'' + esc(ck) + '\')" title="أقصى كمية متاحة من الباقي">أقصى</button>' +
+      '<button type="button" class="oq-zero" aria-label="تصفير الكمية"' + (cq <= 0 ? ' disabled' : '') + ' onclick="nOptZero(\'' + esc(pk) + '\',\'' + esc(ck) + '\')" title="تصفير">0</button></span></div>';
+    const deeper = (hasDeeper && cq > 0) ? nestBlockHTML(chain, idx + 1, path, co) : '';
+    return rowH + deeper;
   }).join('');
   const st = used === q ? 'ok' : used > q ? 'over' : 'under';
   const it = wzItem(), defCol = !!MAP.items.cols.defaultOpts;
-  const hasOptDef = defCol && it ? !!((parseDefaults(it).opts || {})[k]) : false;
+  const defKey = path.length === 1 ? path[0].k : pk;
+  const hasOptDef = defCol && it ? !!((parseDefaults(it).opts || {})[defKey]) : false;
   // افتراضي خاص بالتوزيع الفرعي تحت هذا الاختيار بالذات (زي: افتراضي مختلف لتوزيع «20 Pcs» عن توزيع «40 Pcs»)
   const defBtns = defCol ? '<div class="b-nest-def">' +
-    '<button type="button" onclick="saveOptionDefault(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="يحفظ هذا التوزيع كافتراضي خاص بـ«' + esc(S_(o.name)) + '»">⭐ حفظ توزيع «' + esc(S_(o.name)) + '»</button>' +
-    '<button type="button"' + (hasOptDef ? '' : ' disabled') + ' onclick="loadOptionDefault(\'' + esc(g.code) + '\',\'' + esc(k) + '\')" title="' + (hasOptDef ? 'يرجّع توزيع «' + esc(S_(o.name)) + '» المحفوظ' : 'لا يوجد توزيع محفوظ لـ«' + esc(S_(o.name)) + '»') + '">📥 استرجاع</button></div>' : '';
+    '<button type="button" onclick="saveOptionDefault(\'' + esc(pk) + '\')" title="يحفظ هذا التوزيع كافتراضي خاص بـ«' + esc(S_(o.name)) + '»">⭐ حفظ توزيع «' + esc(S_(o.name)) + '»</button>' +
+    '<button type="button"' + (hasOptDef ? '' : ' disabled') + ' onclick="loadOptionDefault(\'' + esc(pk) + '\')" title="' + (hasOptDef ? 'يرجّع توزيع «' + esc(S_(o.name)) + '» المحفوظ' : 'لا يوجد توزيع محفوظ لـ«' + esc(S_(o.name)) + '»') + '">📥 استرجاع</button></div>' : '';
   return '<div class="b-nest"><div class="b-nest-title">وزّع «' + esc(child.name) + '» على ' + fmtN(q) + ' ' + esc(S_(o.name)) + '</div>' +
     defBtns +
     '<div class="b-nest-rows">' + rows + '</div>' +
     '<div class="b-nest-bar ' + st + '">المحدد ' + fmtN(used) + ' من ' + fmtN(q) + (used === q ? ' ✓' : ' — الباقي ' + fmtN(Math.max(0, q - used))) + '</div></div>';
 }
-function nOptQ(gc, k, ck, d) {
-  const sel = nestSel(gc, k), q = (B.sel[gc] || {})[k] || 0, used = nestTotal(gc, k), cur = sel[ck] || 0;
+function nOptQ(pk, ck, d) {
+  const path = nestPathParse(pk); if (!path) return;
+  const sel = nestSel(path), q = nestParentQty(path), used = nestTotal(path), cur = sel[ck] || 0;
   if (d > 0 && used >= q) { toast('الكمية كاملة (' + fmtN(q) + ')'); return; }
   const nq = Math.max(0, cur + d);
   if (nq === 0) delete sel[ck]; else sel[ck] = nq;
   buildBuilder();
 }
 // يدّي الاختيار الفرعي ده كل الباقي المتاح من إجمالي التوزيع المطلوب دفعة واحدة
-function nOptMax(gc, k, ck) {
-  const sel = nestSel(gc, k), q = (B.sel[gc] || {})[k] || 0, used = nestTotal(gc, k), cur = sel[ck] || 0;
+function nOptMax(pk, ck) {
+  const path = nestPathParse(pk); if (!path) return;
+  const sel = nestSel(path), q = nestParentQty(path), used = nestTotal(path), cur = sel[ck] || 0;
   const room = Math.max(0, q - used);
   if (!room) { toast('الكمية كاملة (' + fmtN(q) + ')'); return; }
   sel[ck] = cur + room;
   buildBuilder();
 }
-function nOptZero(gc, k, ck) {
-  const sel = nestSel(gc, k);
+function nOptZero(pk, ck) {
+  const path = nestPathParse(pk); if (!path) return;
+  const sel = nestSel(path);
   if (!sel[ck]) return;
   delete sel[ck];
   buildBuilder();
+}
+// فكّ مفتاح مسار (من nestPathKey) لمصفوفة {gc,k}؛ بيتقرا من data-attribute مش بيتولّد من جوه كود الموقع، فبيتحقق إنه سليم
+function nestPathParse(pk) {
+  if (!pk) return null;
+  const parts = pk.split('\u0002').map(seg => { const i = seg.indexOf('\u0001'); return i < 0 ? null : { gc: seg.slice(0, i), k: seg.slice(i + 1) }; });
+  return parts.every(Boolean) ? parts : null;
+}
+// الكمية الكلية المطلوب توزيعها على مسار معيّن: من B.sel مباشرة للمستوى الأول، أو من توزيع المستوى اللي فات لأي مستوى أعمق
+function nestParentQty(path) {
+  if (path.length === 1) return (B.sel[path[0].gc] || {})[path[0].k] || 0;
+  const parent = path[path.length - 1], ancestor = path.slice(0, -1);
+  return nestSel(ancestor)[parent.k] || 0;
 }
 function buildBuilder() {
   const grid = $('prod-grid');
@@ -5147,7 +5330,8 @@ function buildBuilder() {
     '<div class="bread-option' + (S_(p.code) === B.code ? ' selected' : '') + '" tabindex="0" role="button" onclick="bProd(' + i + ')" onkeydown="if(event.key===\'Enter\')bProd(' + i + ')"><div class="bread-emoji">' + iconHTML(p) + '</div><div class="bread-name">' + esc(p.name) + '</div><div class="bread-price">' + fmtPrice(p.price) + '</div></div>').join('')
     : '<div class="cart-empty" style="grid-column:1/-1">لا توجد أصناف مطابقة</div>';
   const it = wzItem(), groups = itemGroups(it), nest = nestInfo(groups);
-  const renderGroups = nest ? groups.filter(g => g.code !== nest.child.code) : groups;
+  const nestedCodes = nest ? new Set(nest.chain.slice(1).map(x => nk(S_(x.code)))) : null;
+  const renderGroups = nestedCodes ? groups.filter(g => !nestedCodes.has(nk(S_(g.code)))) : groups;
   if ($('b-defaults')) $('b-defaults').innerHTML = defaultsBlockHTML(it);
   $('b-opts').innerHTML = !it ? '<div class="cg-meta">اختر صنفاً لعرض اختياراته.</div>' : renderGroups.length ? renderGroups.map(g => groupBlockHTML(g, nest)).join('') : '<div class="res-msg warn">' + esc(optsWhy(it)) + '</div>';
   $('b-qty').value = B.qty;
@@ -5156,7 +5340,7 @@ function buildBuilder() {
 function bProd(i) {
   const p = WZ_LIST[i]; if (!p) return;
   if (S_(p.code) !== B.code) {
-    B.code = S_(p.code); B.sel = {}; B.accOpen = {}; B.nest = {};
+    B.code = S_(p.code); B.sel = {}; B.accOpen = {}; B.nest = {}; B.nestDeep = {};
     itemGroups(p).forEach(g => { if (!g.multi && g.min && g.opts.length === 1) B.sel[g.code] = { [optKey(g.opts[0])]: oMin(g.opts[0]) }; });
   }
   buildBuilder();
@@ -5166,21 +5350,23 @@ function isGroupOpen(gc) { return B.accOpen[gc] !== false; }
 function toggleGroupAcc(gc) { B.accOpen[gc] = isGroupOpen(gc) ? false : true; buildBuilder(); }
 function groupBlockHTML(g, nest) {
   const tot = gTotal(g.code), reqBadge = g.min ? ' <span class="b-req">إجباري</span>' : '';
-  const child = (nest && g.code === nest.parent.code) ? nest.child : null;
+  // السلسلة بتتولد وتترندر بس لما g هي جذر سلسلة التداخل (chain[0])؛ باقي حلقات السلسلة بتترندر متداخلة من جوه rowHTML/nestBlockHTML
+  const chain = (nest && g.code === nest.parent.code) ? nest.chain : null;
+  const child = chain ? chain[1] : null;
   if (g.multi) {
     const mx = gMaxE(g), barPct = mx && mx !== Infinity ? Math.min(100, Math.round(tot / mx * 100)) : 0;
     return '<div class="b-group b-group-multi"><div class="b-gname">' + esc(g.name) + reqBadge + '</div>' +
       (mx && mx !== Infinity
         ? '<div class="b-bar-wrap"><div class="b-bar-lbl"><span>' + fmtN(tot) + ' من ' + fmtN(mx) + '</span><span>' + groupHint(g) + '</span></div><div class="b-bar"><b style="width:' + barPct + '%"></b></div></div>'
         : '<div class="b-gname-hint">' + groupHint(g) + (tot ? ' · المختار ' + fmtN(tot) : '') + '</div>') +
-      '<div class="b-orows">' + g.opts.map(o => rowHTML(g, o, child)).join('') + '</div></div>';
+      '<div class="b-orows">' + g.opts.map(o => rowHTML(g, o, chain, 0)).join('') + '</div></div>';
   }
   const open = isGroupOpen(g.code), selK = Object.keys(gSel(g.code))[0];
   const selOpt = selK ? g.opts.find(x => optKey(x) === selK) : null;
   const summary = selOpt ? '✓ ' + esc(S_(selOpt.name)) : (g.min ? 'اختر من هنا' : 'اختياري');
   // لو المجموعة دي أب لمجموعة متداخلة (زي حجم الطلب → نوع الخبز)، اظهر صندوق التوزيع الفرعي تحت الاختيار المحدد
   // بنفس طريقة مجموعات الصندوق (multi)، عشان الكمية المطلوب توزيعها هنا بتيجي من «أقل كمية» المضبوطة على الاختيار نفسه (مش BQ())
-  const nestBlock = (child && selOpt) ? nestBlockHTML(g, selOpt, child) : '';
+  const nestBlock = (child && selOpt) ? nestBlockHTML(chain, 0, [], selOpt) : '';
   return '<div class="b-group b-acc' + (open ? ' open' : '') + '">' +
     '<div class="b-acc-head" onclick="toggleGroupAcc(\'' + esc(g.code) + '\')"><div class="b-acc-left"><div class="b-gname">' + esc(g.name) + reqBadge + '</div><div class="b-acc-summary">' + summary + '</div></div><div class="b-chev">▾</div></div>' +
     '<div class="b-acc-body"><div class="b-pills">' + g.opts.map(o => pillHTML(g, o)).join('') + '</div>' + nestBlock + '</div></div>';
@@ -5189,7 +5375,7 @@ function bOpt(gc, k) {
   const g = itemGroups(wzItem()).find(x => x.code === gc); if (!g) return;
   const o = g.opts.find(x => optKey(x) === k); if (!o) return;
   const sel = gSel(gc);
-  if (sel[k]) { if (!g.multi && g.min) return; delete sel[k]; nestClear(gc, k); }
+  if (sel[k]) { if (!g.multi && g.min) return; delete sel[k]; nestClear([{ gc, k }]); }
   else {
     if (!g.multi) { B.sel[gc] = { [k]: oMin(o) }; }
     else {
@@ -5209,10 +5395,10 @@ function bOptQ(gc, k, d) {
   }
   const nq = sel[k] + d;
   if (nq > oMaxE(g, o)) { toast('أقصى كمية من «' + S_(o.name) + '» هي ' + oMaxE(g, o)); return; }
-  if (nq < oMin(o)) { if (!g.multi && g.min) { toast('أقل كمية من «' + S_(o.name) + '» هي ' + oMin(o)); return; } delete sel[k]; nestClear(gc, k); buildBuilder(); return; }
+  if (nq < oMin(o)) { if (!g.multi && g.min) { toast('أقل كمية من «' + S_(o.name) + '» هي ' + oMin(o)); return; } delete sel[k]; nestClear([{ gc, k }]); buildBuilder(); return; }
   if (d > 0 && gMaxE(g) && g.multi && gTotal(gc) + d > gMaxE(g)) { toast('الحد الأقصى في «' + g.name + '» هو ' + gMaxE(g)); return; }
   sel[k] = nq;
-  if (d < 0) trimNest(gc, k, nq);
+  if (d < 0) trimNest([{ gc, k }], nq);
   buildBuilder();
 }
 // يدّي الاختيار ده أقصى كمية ممكنة دفعة واحدة (محسوبة من حد الاختيار نفسه وحد المجموعة الكلي لو فيه)
@@ -5233,7 +5419,7 @@ function bOptZero(gc, k) {
   const sel = gSel(gc), cur = sel[k] || 0; if (!cur) return;
   if (!g.multi && g.min) { toast('اختيار واحد إجباري من «' + g.name + '»'); return; }
   delete sel[k];
-  nestClear(gc, k);
+  nestClear([{ gc, k }]);
   buildBuilder();
 }
 function bQty(d) {
@@ -5241,31 +5427,45 @@ function bQty(d) {
   B.qty = Math.max(1, d === 0 ? cur : cur + d);
   buildBuilder();
 }
+// بيتأكد إن كل مستوى توزيع في سلسلة التداخل (مهما طالت) بيساوي الكمية المطلوب توزيعها بالظبط، وبينزل لآخر مستوى فعّال
+function validateNestChain(chain) {
+  function walk(idx, selMap, path) {
+    const g = chain[idx], child = chain[idx + 1];
+    if (!child) return null;
+    for (const k of Object.keys(selMap || {})) {
+      const q = selMap[k]; if (!(q > 0)) continue;
+      const o = g.opts.find(x => optKey(x) === k); if (!o) continue;
+      const subPath = path.concat([{ gc: g.code, k }]);
+      const used = nestTotal(subPath);
+      if (used === 0) { if (child.min) return 'وزّع «' + child.name + '» على ' + S_(o.name); }
+      else if (used !== q) return 'توزيع «' + child.name + '» على «' + S_(o.name) + '» لازم يساوي ' + fmtN(q) + ' (دلوقتي ' + fmtN(used) + ')';
+      else { const err = walk(idx + 1, nestSel(subPath), subPath); if (err) return err; }
+    }
+    return null;
+  }
+  return walk(0, B.sel[chain[0].code] || {}, []);
+}
 function addToCart() {
   const it = wzItem();
   if (!it) { toast('اختر صنفاً أولاً'); return; }
   const groups = itemGroups(it), nest = nestInfo(groups);
+  const nestedCodes = nest ? new Set(nest.chain.slice(1).map(x => nk(S_(x.code)))) : null;
   for (const g of groups) {
-    if (nest && g.code === nest.child.code) continue;   // مجموعة التقسيم الفرعي مالهاش حد أدنى/أقصى مستقل، بتتحقق تحت
+    if (nestedCodes && nestedCodes.has(nk(S_(g.code)))) continue;   // حلقات السلسلة غير الجذر مالهاش حد أدنى/أقصى مستقل، بتتحقق تحت
     const n = gTotal(g.code), mn = gMinE(g), mx = gMaxE(g);
     if (n < mn) { toast(g.multi && mn > 1 ? 'اختر ' + mn + ' على الأقل في «' + g.name + '» (المختار ' + n + ')' : 'اختر من «' + g.name + '»'); return; }
     if (mx && n > mx) { toast('الحد الأقصى في «' + g.name + '» هو ' + mx + ' (المختار ' + n + ')'); return; }
     for (const k of Object.keys(B.sel[g.code] || {})) { const o = g.opts.find(x => optKey(x) === k); if (o && B.sel[g.code][k] > oMaxE(g, o)) { toast('أقصى كمية من «' + S_(o.name) + '» هي ' + oMaxE(g, o)); return; } }
   }
   if (nest) {
-    for (const k of Object.keys(B.sel[nest.parent.code] || {})) {
-      const q = B.sel[nest.parent.code][k]; if (!(q > 0)) continue;
-      const o = nest.parent.opts.find(x => optKey(x) === k); if (!o) continue;
-      const used = nestTotal(nest.parent.code, k);
-      if (used === 0) { if (nest.child.min) { toast('وزّع «' + nest.child.name + '» على ' + S_(o.name)); return; } }
-      else if (used !== q) { toast('توزيع «' + nest.child.name + '» على «' + S_(o.name) + '» لازم يساوي ' + fmtN(q) + ' (دلوقتي ' + fmtN(used) + ')'); return; }
-    }
+    const err = validateNestChain(nest.chain);
+    if (err) { toast(err); return; }
   }
   const opts = selOpts(groups), note = $('b-note').value.trim();
   const line = { code: S_(it.code), name: S_(it.name), fill: 'سادة', size: '', opts, extras: opts.map(optLabel), bread: breadOf(opts), grain: S_(it.grainType), qty: B.qty, note, unit: wzUnit(it, groups) };
   const same = !opts.length && cart.find(c => c.code === line.code && c.note === line.note && !(c.opts || []).length);
   if (same) same.qty += line.qty; else cart.push(line);
-  B.sel = {}; B.qty = 1; B.nest = {}; $('b-note').value = '';
+  B.sel = {}; B.qty = 1; B.nest = {}; B.nestDeep = {}; $('b-note').value = '';
   itemGroups(it).forEach(g => { if (!g.multi && g.min && g.opts.length === 1) B.sel[g.code] = { [optKey(g.opts[0])]: oMin(g.opts[0]) }; });
   buildBuilder();
   renderCart();
@@ -5277,7 +5477,7 @@ function addToCart() {
    - general: افتراضي عام للصنف كله (كل الاختيارات والكميات) — زي ما كان قبل كده
    - opts: افتراضي خاص بالتوزيع الفرعي تحت اختيار معيّن بالذات (زي: توزيع مختلف لـ«20 Pcs» عن «40 Pcs»)
    كل ده بكود المجموعة/الاختيار (مش بالاسم) عشان لو الاسم اتغيّر بعدين الاختيار المحفوظ يفضل شغال صح */
-function serializeSelection() { return JSON.stringify({ sel: B.sel, nest: B.nest, qty: B.qty }); }
+function serializeSelection() { return JSON.stringify({ sel: B.sel, nest: B.nest, nestDeep: B.nestDeep, qty: B.qty }); }
 // بيقرا عمود الافتراضي ويرجّعه بشكل {general, opts} موحّد، وبيدعم الصيغة القديمة (كانت JSON واحد = الافتراضي العام بس)
 function parseDefaults(it) {
   const json = S_(it && it.defaultOpts);
@@ -5299,7 +5499,7 @@ function applySelection(json, groups) {
   let data; try { data = JSON.parse(json); } catch (e) { return null; }
   if (!data || typeof data !== 'object') return null;
   const byCode = new Map(groups.map(g => [g.code, g]));
-  const newSel = {}, newNest = {};
+  const newSel = {}, newNest = {}, newDeep = {};
   let applied = 0, skipped = 0;
   Object.keys(data.sel || {}).forEach(gc => {
     const g = byCode.get(gc); if (!g) { skipped += Object.keys(data.sel[gc] || {}).length; return; }
@@ -5313,7 +5513,7 @@ function applySelection(json, groups) {
     });
     if (Object.keys(row).length) newSel[gc] = row;
   });
-  const nest = nestInfo(groups);
+  const nest = nestInfo(groups), chain = nest ? nest.chain : null;
   Object.keys(data.nest || {}).forEach(gc => {
     const g = byCode.get(gc); if (!g || !nest || nest.parent.code !== gc) return;
     Object.keys(data.nest[gc] || {}).forEach(k => {
@@ -5327,7 +5527,23 @@ function applySelection(json, groups) {
       if (Object.keys(row).length) { if (!newNest[gc]) newNest[gc] = {}; newNest[gc][k] = row; }
     });
   });
-  B.sel = newSel; B.nest = newNest;
+  // تداخل أعمق من مستوى واحد (محفوظ بمفتاح مسار مركّب): بنتحقق إن المسار لسه مطابق لسلسلة التداخل الحالية بنفس الترتيب
+  if (chain && chain.length > 2) {
+    Object.keys(data.nestDeep || {}).forEach(pk => {
+      const path = nestPathParse(pk);
+      const bad = !path || path.length < 2 || path.some((p, i) => !chain[i] || nk(S_(chain[i].code)) !== nk(S_(p.gc)));
+      if (bad) { skipped += Object.keys(data.nestDeep[pk] || {}).length; return; }
+      const levelGroup = chain[path.length]; if (!levelGroup) { skipped += Object.keys(data.nestDeep[pk] || {}).length; return; }
+      const row = {};
+      Object.keys(data.nestDeep[pk] || {}).forEach(ck => {
+        const co = levelGroup.opts.find(x => optKey(x) === ck);
+        if (!co) { skipped++; return; }
+        const q = Number(data.nestDeep[pk][ck]) || 0; if (q > 0) { row[ck] = q; applied++; }
+      });
+      if (Object.keys(row).length) newDeep[pk] = row;
+    });
+  }
+  B.sel = newSel; B.nest = newNest; B.nestDeep = newDeep;
   if (Number(data.qty) > 0) B.qty = Math.floor(Number(data.qty));
   return { applied, skipped };
 }
@@ -5336,7 +5552,7 @@ async function saveDefaultOpts() {
   if (!MAP.items.cols.defaultOpts) { toast('عمود «الاختيارات الافتراضية» غير مربوط في شيت Items. أضفه من إعدادات الأدمن'); return; }
   if (!Object.keys(B.sel || {}).length) { toast('اختر الاختيارات الأول قبل الحفظ كافتراضي'); return; }
   const data = parseDefaults(it);
-  data.general = { sel: B.sel, nest: B.nest, qty: B.qty };
+  data.general = { sel: B.sel, nest: B.nest, nestDeep: B.nestDeep, qty: B.qty };
   try {
     await writeDefaults(it, data); // بيحتفظ بأي توزيعات افتراضية خاصة باختيارات (opts) متسجّلة قبل كده
     toast('⭐ اتحفظت الاختيارات كافتراضي لـ«' + S_(it.name) + '»');
@@ -5354,36 +5570,43 @@ function loadDefaultOpts() {
   toast(r.skipped ? '📥 تم الاسترجاع (' + r.skipped + ' اختيار اتجوهل لأنه اتغيّر أو اتشال)' : '📥 تم استرجاع الاختيارات الافتراضية');
 }
 // افتراضي خاص بتوزيع التقسيم الفرعي تحت اختيار معيّن بالذات (مش افتراضي الصنف كله) — زي توزيع البذرة الافتراضي جوه «20 Pcs» عن «40 Pcs»
-async function saveOptionDefault(gc, k) {
+// (ونفس الفكرة لأي مستوى أعمق في سلسلة التداخل، زي توزيع نوع الخبز جوه كل نوع لحمة على حدة). pk = مفتاح مسار من nestPathKey.
+// المستوى الأول بيتخزن بمفتاح الاختيار المجرد (توافقاً مع افتراضيات محفوظة قبل دعم التسلسل)، وأي مستوى أعمق بمفتاح المسار الكامل.
+async function saveOptionDefault(pk) {
   const it = wzItem(); if (!it) return;
   if (!MAP.items.cols.defaultOpts) { toast('عمود «الاختيارات الافتراضية» غير مربوط في شيت Items. أضفه من إعدادات الأدمن'); return; }
-  const nest = (B.nest[gc] || {})[k];
+  const path = nestPathParse(pk); if (!path) return;
+  const nest = nestSel(path);
   if (!nest || !Object.keys(nest).length) { toast('وزّع الاختيارات الأول قبل الحفظ كافتراضي'); return; }
   const data = parseDefaults(it);
   if (!data.opts) data.opts = {};
-  data.opts[k] = { nest };
+  const defKey = path.length === 1 ? path[0].k : pk;
+  data.opts[defKey] = { nest };
   try {
     await writeDefaults(it, data);
     toast('⭐ اتحفظ التوزيع الافتراضي');
     buildBuilder();
   } catch (e) { toast(gsError(e)); }
 }
-function loadOptionDefault(gc, k) {
+function loadOptionDefault(pk) {
   const it = wzItem(); if (!it) return;
+  const path = nestPathParse(pk); if (!path) return;
   const data = parseDefaults(it);
-  const saved = data.opts && data.opts[k];
+  const defKey = path.length === 1 ? path[0].k : pk;
+  const saved = data.opts && data.opts[defKey];
   if (!saved || !saved.nest) { toast('لا يوجد توزيع افتراضي محفوظ لهذا الاختيار'); return; }
   const groups = itemGroups(it), nest = nestInfo(groups);
-  if (!nest || nest.parent.code !== gc) return;
+  if (!nest) return;
+  if (path.some((p, i) => !nest.chain[i] || nk(S_(nest.chain[i].code)) !== nk(S_(p.gc)))) return; // السلسلة اتغيّرت من ساعة الحفظ
+  const childGroup = nest.chain[path.length]; if (!childGroup) return;
   const row = {}; let applied = 0, skipped = 0;
   Object.keys(saved.nest).forEach(ck => {
-    const co = nest.child.opts.find(x => optKey(x) === ck);
+    const co = childGroup.opts.find(x => optKey(x) === ck);
     if (!co) { skipped++; return; }
     const q = Number(saved.nest[ck]) || 0; if (q > 0) { row[ck] = q; applied++; }
   });
   if (!applied) { toast('التوزيع الافتراضي المحفوظ تالف، احفظه تاني'); return; }
-  if (!B.nest[gc]) B.nest[gc] = {};
-  B.nest[gc][k] = row;
+  nestSetSel(path, row);
   buildBuilder();
   toast(skipped ? '📥 تم الاسترجاع (' + skipped + ' اختيار اتجوهل لأنه اتغيّر أو اتشال)' : '📥 تم استرجاع التوزيع الافتراضي');
 }
@@ -5589,7 +5812,7 @@ async function submitOrder() {
   }
 }
 function resetWizard() {
-  cart = []; B.code = ''; B.sel = {}; B.nest = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
+  cart = []; B.code = ''; B.sel = {}; B.nest = {}; B.nestDeep = {}; B.qty = 1; B.cat = 'all'; B.q = ''; PICK = null;
   ['c-search', 'c-address', 'c-notes', 'b-note', 'b-q', 'c-invref'].forEach(id => $(id).value = '');
   renderPick();
   $('p-discount').value = 0; $('p-paid').value = 0; $('c-date').value = todayStr();
@@ -5606,7 +5829,7 @@ function toggleTheme() {
 }
 /* ───────── Google Sheets connection ───────── */
 const LS_CFG = 'bk_cfg', LS_MAP = 'bk_map', LS_CACHE = 'bk_cache', LS_UI = 'bk_ui_pref', LS_MSGTPL = 'bk_msg_tpl';
-const LS_NAV_ORDER = 'bk_nav_order', LS_CG_ORDER = 'bk_cg_order', LS_RP_ORDER = 'bk_rp_order';
+const LS_NAV_ORDER = 'bk_nav_order', LS_CG_ORDER = 'bk_cg_order', LS_RP_ORDER = 'bk_rp_order', LS_RPSEC = 'bk_rp_sections';
 const AUTH = { secured: false, token: '', user: null, diag: '' };
 
 /* ───────── شكل الموقع: تلقائي حسب حجم الشاشة، أو تفضيل شخصي محفوظ ───────── */
@@ -6234,6 +6457,8 @@ async function loadAll() {
   }
   // شكل رسائل النسخ: لو محفوظ على الشيت (مشترك)، هو المرجع لكل الأجهزة؛ غير كده يفضل الشكل المحفوظ على الجهاز ده بس
   if (r.msgTpl) { MSG_TPL = mergeMsgTpl(r.msgTpl); lsSet(LS_MSGTPL, JSON.stringify(MSG_TPL)); MSG_TPL_SHARED = true; }
+  // تخصيص كروت شاشة «قائمة التحضير»: نفس فكرة رسائل النسخ — لو محفوظ على الشيت بيبقى هو المرجع لكل الأجهزة
+  if (r.rpSections) { RP_SECTIONS = r.rpSections; lsSet(LS_RPSEC, JSON.stringify(RP_SECTIONS)); RP_SECTIONS_SHARED = true; }
   const out = {};
   Object.keys(TABLES).forEach(t => {
     if (t === 'users' || !tableOk(t)) return;
@@ -6574,11 +6799,12 @@ async function startup() {
 
 /* ───────── Settings: account, users, preferences ───────── */
 function setSec(sec) {
-  ['account', 'users', 'prefs', 'messages', 'taborder', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
+  ['account', 'users', 'prefs', 'messages', 'rpsec', 'taborder', 'log'].forEach(s => { $('set-' + s).hidden = s !== sec; });
   document.querySelectorAll('#set-nav .sn-item').forEach(n => n.classList.toggle('active', n.dataset.sec === sec));
   if (sec === 'users') loadUsers();
   if (sec === 'log') loadLog();
   if (sec === 'messages') renderMsgSettings();
+  if (sec === 'rpsec') renderRpSecUI();
   if (sec === 'taborder') renderTabOrderSettings();
 }
 function onSettingsOpen() {
@@ -7460,7 +7686,9 @@ function groupSelect(id, sel) {
 // قايمة المجموعات اللي ممكن تتداخل جوه المجموعة الحالية (كل المجموعات ما عدا نفسها)
 function nestChildSelect(selfCode, cur) {
   const list = DB.groups.filter(g => S_(g.code) !== S_(selfCode));
-  return '<select id="cg-nest"><option value="">— بدون —</option>' + list.map(g => '<option value="' + esc(g.code) + '"' + (S_(g.code) === S_(cur) ? ' selected' : '') + '>' + esc(S_(g.name) || g.code) + '</option>').join('') + '</select>';
+  return '<select id="cg-nest"><option value="">— بدون (افتراضي) —</option>' +
+    '<option value="' + NEST_NONE + '"' + (S_(cur) === NEST_NONE ? ' selected' : '') + '>🚫 امنع التداخل التلقائي لهذه المجموعة</option>' +
+    list.map(g => '<option value="' + esc(g.code) + '"' + (S_(g.code) === S_(cur) ? ' selected' : '') + '>' + esc(S_(g.name) || g.code) + '</option>').join('') + '</select>';
 }
 
 function openCg(sec, row, pre) {
@@ -7490,7 +7718,7 @@ function openCg(sec, row, pre) {
       (c.min ? fld('cg-min', 'الحد الأدنى للاختيارات', '<input type="number" id="cg-min" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.min) + '">') : '') +
       (c.max ? fld('cg-max', 'الحد الأقصى للاختيارات', '<input type="number" id="cg-max" min="0" step="1" placeholder="مفتوح" value="' + esc(isNew ? '' : v.max) + '">') : '') +
       (c.nestChild ? fld('cg-nest', 'مجموعة متداخلة جواها (اختياري)', nestChildSelect(isNew ? '' : v.code, isNew ? '' : S_(v.nestChild))) +
-        '<div class="hint" style="grid-column:1/-1">لو اخترت مجموعة هنا، هتظهر متداخلة جوه اختيارات المجموعة دي (بدل ما تظهر مستقلة) في شاشة الطلب — تنفع لحالات زي «حجم الطلب» وتحته «نوع الخبز». لازم المجموعتين مربوطين بنفس الصنف من تاب «الربط».</div>' : '') +
+        '<div class="hint" style="grid-column:1/-1">لو اخترت مجموعة هنا، هتظهر متداخلة جوه اختيارات المجموعة دي (بدل ما تظهر مستقلة) في شاشة الطلب — تنفع لحالات زي «حجم الطلب» وتحته «نوع الخبز». لازم المجموعتين مربوطين بنفس الصنف من تاب «الربط».<br>ملحوظة: لو المجموعة دي النوع بتاعها «متعدد» وهي المجموعة الوحيدة كده على الصنف، النظام ممكن يحطّ تلقائي أي مجموعة تانية بتصنيف مختلف جواها (زي ما كان بيحصل قبل ما الإعداد ده يتضاف) — لو مش ده اللي انت عايزه، اختار «🚫 امنع التداخل التلقائي» عشان تخليها مستقلة.</div>' : '') +
       (c.active ? fld('cg-active', 'الحالة', '<label class="toggle-inline"><input type="checkbox" id="cg-active"' + (isNew || isOn(v.active) ? ' checked' : '') + '> مجموعة مفعّلة</label>') : '');
   } else if (sec === 'options') {
     title = isNew ? 'إضافة اختيار' : 'تعديل الاختيار';
@@ -7661,9 +7889,9 @@ async function saveCg() {
       if ($('cg-max')) vals.max = max;
       if ($('cg-nest')) {
         const nc = $('cg-nest').value.trim();
-        if (nc && !isNew && nc === row.code) return fail('مينفعش المجموعة تتداخل جوه نفسها');
+        if (nc && nc !== NEST_NONE && !isNew && nc === row.code) return fail('مينفعش المجموعة تتداخل جوه نفسها');
         // منع التداخل الدائري: المجموعة المختارة ميبقاش هي نفسها متداخلة جوه المجموعة الحالية (دايرة من اتنين)
-        if (nc && !isNew && DB.groups.some(g => S_(g.code) === nc && nk(S_(g.nestChild)) === nk(row.code))) return fail('هذه المجموعة متداخلة بالفعل جوه المجموعة الحالية — لازم تشيل التداخل منها الأول');
+        if (nc && nc !== NEST_NONE && !isNew && DB.groups.some(g => S_(g.code) === nc && nk(S_(g.nestChild)) === nk(row.code))) return fail('هذه المجموعة متداخلة بالفعل جوه المجموعة الحالية — لازم تشيل التداخل منها الأول');
         vals.nestChild = nc;
       }
       if ($('cg-active')) vals.active = activeValue($('cg-active').checked, 'groups');
